@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>AR Letter - End Roll</title>
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <!-- AR.js for A-Frame（マーカー型） -->
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+    </style>
+
+    <script>
+      // 「今までありがとうございました！」を上に流してフェードアウトさせるコンポーネント
+      AFRAME.registerComponent('endroll', {
+        schema: {
+          speed: { type: 'number', default: 0.2 },      // 上に動く速さ（m/秒）
+          startY: { type: 'number', default: -0.2 },    // 出てくる高さ（紙の中）
+          endY: { type: 'number', default: 0.4 },       // 消える高さのしきい値
+          fadeStartY: { type: 'number', default: 0.1 }  // フェードアウト開始位置
+        },
+
+        init: function () {
+          const data = this.data;
+          const el = this.el;
+
+          // 初期位置を「紙の中」にセット
+          const pos = el.getAttribute('position');
+          pos.y = data.startY;
+          el.setAttribute('position', pos);
+
+          // ベースの不透明度を覚えておく
+          this.baseOpacity = 1.0;
+          const textComp = el.getAttribute('text');
+          if (textComp && typeof textComp.opacity !== 'undefined') {
+            this.baseOpacity = textComp.opacity;
+          }
+        },
+
+        tick: function (time, dt) {
+          const data = this.data;
+          const el = this.el;
+
+          // 経過時間（秒）
+          const deltaSec = dt / 1000;
+
+          // y座標を更新（上方向に移動）
+          const pos = el.getAttribute('position');
+          pos.y += data.speed * deltaSec;
+          el.setAttribute('position', pos);
+
+          const y = pos.y;
+
+          // フェードアウト制御
+          if (y >= data.fadeStartY) {
+            const t = (y - data.fadeStartY) / (data.endY - data.fadeStartY);
+            const alpha = Math.max(0, 1 - t) * this.baseOpacity;
+
+            // textコンポーネント & material の両方に反映
+            el.setAttribute('text', 'opacity', alpha);
+            el.setAttribute('material', 'opacity', alpha);
+            el.setAttribute('material', 'transparent', true);
+          }
+
+          // しきい値を超えたら要素を削除
+          if (y >= data.endY) {
+            if (el.parentNode) {
+              el.parentNode.removeChild(el);
+            }
+          }
+        }
+      });
+    </script>
+  </head>
+
+  <body>
+    <!-- デバッグUIなしのAR.jsシーン -->
+    <a-scene
+      embedded
+      vr-mode-ui="enabled: false"
+      renderer="antialias: true; alpha: true"
+      arjs="sourceType: webcam; debugUIEnabled: false;"
+    >
+      <!-- 黒枠マーカー（Hiroマーカー）を認識したときに出現 -->
+      <a-marker type="pattern" preset="hiro">
+        <!-- テキスト本体 -->
+        <a-entity
+          id="endroll-text"
+          endroll="speed: 0.25; startY: -0.2; endY: 0.45; fadeStartY: 0.1"
+          text="value: 今までありがとうございました！;
+                align: center;
+                color: #ffffff;
+                width: 1.8;
+                wrapCount: 20;
+                opacity: 1;"
+          position="0 0 0"
+          rotation="-90 0 0"
+        ></a-entity>
+      </a-marker>
+
+      <!-- カメラ -->
+      <a-entity camera></a-entity>
+    </a-scene>
+  </body>
+</html>
