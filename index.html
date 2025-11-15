@@ -2,12 +2,12 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <title>XR Letter - Hiro Test</title>
+    <title>XR Letter - End Roll</title>
 
     <!-- A-Frame（AR.js 3.4.7 に対応する 1.6.0） -->
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
 
-    <!-- ローカルに保存した AR.js（Marker + Location 用） -->
+    <!-- ローカルに保存した AR.js -->
     <script src="./js/aframe-ar.js"></script>
 
     <style>
@@ -24,10 +24,68 @@
         font-family: sans-serif;
       }
     </style>
+
+    <script>
+      // 「今までありがとうございました！」を上に流してフェードアウトさせるコンポーネント
+      AFRAME.registerComponent('endroll', {
+        schema: {
+          speed: { type: 'number', default: 0.25 },      // 上に動く速さ（m/秒）
+          startY: { type: 'number', default: -0.10 },     // 出てくる高さ（紙の中）
+          endY: { type: 'number', default: 0.40 },        // 消える高さのしきい値
+          fadeStartY: { type: 'number', default: 0.10 }   // フェードアウト開始位置
+        },
+
+        init: function () {
+          const data = this.data;
+          const el = this.el;
+
+          // 初期位置を「紙の中」にセット
+          const pos = el.getAttribute('position') || {x:0,y:0,z:0};
+          pos.y = data.startY;
+          el.setAttribute('position', pos);
+
+          // ベースの不透明度
+          this.baseOpacity = 1.0;
+          const textComp = el.getAttribute('text');
+          if (textComp && typeof textComp.opacity !== 'undefined') {
+            this.baseOpacity = textComp.opacity;
+          }
+        },
+
+        tick: function (time, dt) {
+          const data = this.data;
+          const el = this.el;
+
+          const deltaSec = dt / 1000;
+          const pos = el.getAttribute('position');
+          pos.y += data.speed * deltaSec;
+          el.setAttribute('position', pos);
+
+          const y = pos.y;
+
+          // フェードアウト
+          if (y >= data.fadeStartY) {
+            const t = (y - data.fadeStartY) / (data.endY - data.fadeStartY);
+            const alpha = Math.max(0, 1 - t) * this.baseOpacity;
+
+            el.setAttribute('text', 'opacity', alpha);
+            el.setAttribute('material', 'opacity', alpha);
+            el.setAttribute('material', 'transparent', true);
+          }
+
+          // しきい値を超えたら削除
+          if (y >= data.endY) {
+            if (el.parentNode) {
+              el.parentNode.removeChild(el);
+            }
+          }
+        }
+      });
+    </script>
   </head>
 
   <body>
-    <div class="overlay">XR Letter Loading... (Hiro test)</div>
+    <div class="overlay">XR Letter Loading... (End Roll)</div>
 
     <a-scene
       embedded
@@ -35,12 +93,27 @@
       vr-mode-ui="enabled: false"
       arjs="sourceType: webcam; debugUIEnabled: false;"
     >
-      <!-- ★ ここが一番大事：Hiroマーカーを認識したら赤い箱を出すだけ -->
+      <!-- Hiroマーカー -->
       <a-marker preset="hiro">
+        <!-- デバッグ用の赤い箱（まだ残しておく） -->
         <a-box
           position="0 0.5 0"
-          material="color: red; opacity: 0.8;"
+          material="color: red; opacity: 0.5;"
         ></a-box>
+
+        <!-- エンドロールテキスト -->
+        <a-entity
+          id="endroll-text"
+          endroll="speed: 0.25; startY: -0.10; endY: 0.40; fadeStartY: 0.10"
+          text="value: 今までありがとうございました！;
+                align: center;
+                color: #ffffff;
+                width: 1.8;
+                wrapCount: 20;
+                opacity: 1;"
+          position="0 0 0"
+          scale="0.5 0.5 0.5"
+        ></a-entity>
       </a-marker>
 
       <!-- カメラ -->
