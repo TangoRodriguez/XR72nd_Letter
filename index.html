@@ -90,19 +90,27 @@
     >
       <!-- Hiroマーカー -->
       <a-marker preset="hiro">
-        <!-- デバッグ用の赤い箱 -->
-        <a-box
-            position="0 0.5 0"
-            material="color: red; opacity: 0.4;"
-        ></a-box>
+  <!-- ラッパー: 座標系を90°立て直す -->
+        <a-entity rotation="-90 0 0">
 
-        <!-- 英語だけのテキスト（フォント対応確認用） -->
-        <a-entity
-            text="value: THANK YOU!; align: center; color: #FFFFFF; width: 3; opacity: 1;"
-            position="0 0.5 0.05"
-            scale="1 1 1"
-        ></a-entity>
+            <!-- デバッグ: 赤い箱 -->
+            <a-box
+            position="0 0.5 0"
+            material="color: red; opacity: 0.3;"
+            ></a-box>
+
+            <!-- テキスト -->
+            <a-text
+            value="HELLO"
+            color="#FFFFFF"
+            align="center"
+            width="2.5"
+            position="0 0.3 0"
+            ></a-text>
+
+        </a-entity>
        </a-marker>
+
 
 
       <!-- カメラ -->
