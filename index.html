@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <title>AR Letter - End Roll</title>
-    <!-- A-Frame -->
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <!-- AR.js for A-Frame（マーカー型） -->
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
+    <!-- A-Frame 本体（AR.js 3.4.7 に合わせて 1.6.0 に） -->
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <!-- ローカルに保存した AR.js（aframe版） -->
+    <script src="./js/aframe-ar.js"></script>
 
     <style>
       body {
@@ -79,6 +79,9 @@
   </head>
 
   <body>
+    <div style="position: fixed; z-index: 10; top: 10px; left: 10px; color: white;">
+    XR Letter Loading...
+    </div>
     <!-- デバッグUIなしのAR.jsシーン -->
     <a-scene
       embedded
