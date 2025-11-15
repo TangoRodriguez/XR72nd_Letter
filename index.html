@@ -90,26 +90,27 @@
     >
       <!-- Hiroマーカー -->
       <a-marker preset="hiro">
-  <!-- ラッパー: 座標系を90°立て直す -->
+  <!-- 座標系を立て直すラッパー -->
         <a-entity rotation="-90 0 0">
 
-            <!-- デバッグ: 赤い箱 -->
-            <a-box
-            position="0 0.5 0"
-            material="color: red; opacity: 0.3;"
-            ></a-box>
-
-            <!-- テキスト -->
-            <a-text
-            value="HELLO"
-            color="#FFFFFF"
-            align="center"
-            width="2.5"
+            <!-- デバッグ用：赤い板（今度は自前の plane） -->
+            <a-entity
+            geometry="primitive: box; height: 0.6; width: 0.6; depth: 0.05"
+            material="color: red; opacity: 0.3"
             position="0 0.3 0"
-            ></a-text>
+            ></a-entity>
+
+            <!-- ★ テキスト付きの plane ★ -->
+            <a-entity
+            geometry="primitive: plane; height: 0.3; width: 1.2"
+            material="color: black; opacity: 0.7; side: double"
+            text="value: HELLO; align: center; color: #FFFFFF; width: 2; side: double"
+            position="0 0.3 0.03"
+            ></a-entity>
 
         </a-entity>
        </a-marker>
+
 
 
 
