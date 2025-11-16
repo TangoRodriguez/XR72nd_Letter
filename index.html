@@ -6,7 +6,9 @@
 
     <!-- A-Frame / AR.js -->
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-    <script src="./js/aframe-ar.js"></script>
+    <script src="./js/aframe-ar.js?v=1.0.1"></script>
+    <script src="./js/app.js?v=1.0.1"></script>
+
 
     <style>
       body {
@@ -117,30 +119,30 @@
 
       <!-- Hiro マーカー -->
       <a-marker preset="hiro">
-        <!-- 座標系を立て直すラッパー -->
-        <a-entity rotation="-90 0 0">
 
-          <!-- デバッグ用 赤い板（まだ残しておく） -->
-          <a-entity
-            geometry="primitive: box; height: 0.6; width: 0.6; depth: 0.05"
-            material="color: red; opacity: 0.3"
-            position="0 0.3 0"
-          ></a-entity>
-
-          <!-- ★ キャンバスを貼ったメッセージプレーン（エンドロール） -->
-          <a-plane
-            id="messagePlane"
-            src="#msgCanvas"
-            endroll="speed: 0.25; startY: -0.10; endY: 0.40; fadeStartY: 0.10"
-            position="0 0 0.05"
-            rotation="0 0 0"
-            width="1.6"
-            height="0.4"
-            material="transparent: true; side: double"
-          ></a-plane>
-
-        </a-entity>
+        <!-- 赤い板（残したいなら残す、不要なら削除OK） -->
+        <a-plane
+          color="#bf2d2d"
+          height="2"
+          width="2"
+          position="0 0 0"
+          rotation="-90 0 0"
+          opacity="0.4"
+        ></a-plane>
+      
+        <!-- ★ しっかり前に浮き出るテキスト ★ -->
+        <a-text
+          value="今までありがとうございました！"
+          color="#ffffff"
+          align="center"
+          side="double"
+          width="3.5"
+          position="0 1.2 0.2"
+          rotation="-90 0 0"
+        ></a-text>
+      
       </a-marker>
+
 
       <!-- カメラ -->
       <a-entity camera></a-entity>
