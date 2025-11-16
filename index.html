@@ -65,7 +65,7 @@
           speed: { type: "number", default: 0.22 },
           startY: { type: "number", default: -0.25 },
           endY: { type: "number", default: 0.85 },
-          fadeStartY: { type: "number", default: 0.45 }
+          fadeStartY: { type: "number", default: 0.25 }
         },
 
         init: function () {
@@ -144,22 +144,55 @@
       }
 
       // ===== 一定間隔で 1 行ずつ流すマネージャ =====
-      AFRAME.registerComponent("endrollmanager", {
-        tick: function () {
-          if (!spawnAllowed) return;
-          if (currentIndex >= messages.length) return;
-
-          spawnAllowed = false;
-          spawnMessagePlane(messages[currentIndex]);
-          currentIndex++;
-
-          if (currentIndex < messages.length) {
-            setTimeout(function () {
-              spawnAllowed = true;
-            }, 3000); // 次の行が出るまでの間隔（ms）
+      AFRAME.registerComponent('endroll', {
+        schema: {
+          speed: { type: 'number', default: 0.25 },
+          startY: { type: 'number', default: -0.10 },
+          endY: { type: 'number', default: 0.40 },
+          fadeStartY: { type: 'number', default: 0.10 },
+          fadeDuration: { type: 'number', default: 0.6 } // ★ フェードアウト時間（秒）
+        },
+      
+        init: function () {
+          var el = this.el;
+          var pos = el.getAttribute('position') || {x: 0, y: 0, z: 0};
+          pos.y = this.data.startY;
+          el.setAttribute('position', pos);
+      
+          this.fadeStartTimer = null; // ★ フェード開始時刻
+        },
+      
+        tick: function (time, dt) {
+          var data = this.data;
+          var el = this.el;
+      
+          var deltaSec = dt / 1000;
+          var pos = el.getAttribute('position');
+          pos.y += data.speed * deltaSec;
+          el.setAttribute('position', pos);
+      
+          // フェード開始位置に達したらタイマー開始
+          if (pos.y >= data.fadeStartY && this.fadeStartTimer === null) {
+            this.fadeStartTimer = time;
+          }
+      
+          // フェードアウト処理
+          if (this.fadeStartTimer !== null) {
+            var elapsed = (time - this.fadeStartTimer) / 1000; // 秒
+            var alpha = Math.max(0, 1 - elapsed / data.fadeDuration);
+            el.setAttribute('material', 'transparent', true);
+            el.setAttribute('material', 'opacity', alpha);
+          }
+      
+          // 一定高さを超えたら削除
+          if (pos.y >= data.endY) {
+            if (el.parentNode) {
+              el.parentNode.removeChild(el);
+            }
           }
         }
       });
+
     </script>
   </head>
 
