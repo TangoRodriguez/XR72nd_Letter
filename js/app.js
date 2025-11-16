@@ -1,4 +1,4 @@
-const messages = const messages = [
+const messages = [
   "塩田さんへ",
   "同じ学科の後輩として",
   "同じ班の後輩として",
