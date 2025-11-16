@@ -6,13 +6,12 @@
 
     <!-- A-Frame / AR.js -->
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-    <script src="./js/aframe-ar.js?v=1.0.1"></script>
-    <script src="./js/app.js?v=1.0.1"></script>
+    <script src="./js/aframe-ar.js?v=1.0.2"></script>
+
+    <!-- キャッシュ対策 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-
-
 
     <style>
       body {
@@ -30,47 +29,74 @@
     </style>
 
     <script>
-      // エンドロール用コンポーネント（planeを上に流してフェードアウト）
-      AFRAME.registerComponent('endroll', {
+      // ===== エンドロールで流す文章 =====
+      const messages = [
+        "塩田さんへ",
+        "同じ学科の後輩として",
+        "同じ班の後輩として",
+        "いつも活動できたことが嬉しかったです。",
+        "塩田さんは",
+        "僕にとって憧れの人です。",
+        "明るさにも",
+        "優しさにも",
+        "全てに惹かれています。",
+        "塩田さんがXR班をつくったことで",
+        "僕はXRという世界に出会いました。",
+        "XRに触れた日から",
+        "視界が一気に広がりました。",
+        "今回の理工展で企画を担当できたのも",
+        "塩田さんがいたからです。",
+        "来期は、もっと面白いものを作ります。",
+        "胸を張って見せられるものを作ります。",
+        "このAR手紙には",
+        "これからの僕の進捗を",
+        "3Dオブジェクトで追加していこうと思っています。",
+        "よかったら、また覗きに来てください。",
+        "その時、少しでも成長した僕を見せられますように。",
+        "本当にありがとうございました。"
+      ];
+
+      let currentIndex = 0;
+      let spawnAllowed = true;
+
+      // ===== 上に流れてフェードアウトするコンポーネント =====
+      AFRAME.registerComponent("endroll", {
         schema: {
-          speed: { type: 'number', default: 0.25 },     // 上昇速度（m/s）
-          startY: { type: 'number', default: -0.10 },    // 出現位置
-          endY:   { type: 'number', default: 0.40 },     // 消える高さ
-          fadeStartY: { type: 'number', default: 0.10 }  // フェード開始位置
+          speed: { type: "number", default: 0.22 },
+          startY: { type: "number", default: -0.25 },
+          endY: { type: "number", default: 0.85 },
+          fadeStartY: { type: "number", default: 0.25 }
         },
 
         init: function () {
-          var data = this.data;
-          var el = this.el;
-
-          var pos = el.getAttribute('position') || {x: 0, y: 0, z: 0};
+          const data = this.data;
+          const el = this.el;
+          const pos = el.getAttribute("position") || { x: 0, y: 0, z: 0 };
           pos.y = data.startY;
-          el.setAttribute('position', pos);
-
+          el.setAttribute("position", pos);
           this.baseOpacity = 1.0;
         },
 
         tick: function (time, dt) {
-          var data = this.data;
-          var el = this.el;
+          const data = this.data;
+          const el = this.el;
 
-          var deltaSec = dt / 1000;
-          var pos = el.getAttribute('position');
+          const deltaSec = dt / 1000;
+          const pos = el.getAttribute("position");
           pos.y += data.speed * deltaSec;
-          el.setAttribute('position', pos);
+          el.setAttribute("position", pos);
 
-          var y = pos.y;
+          const y = pos.y;
 
           // フェードアウト
           if (y >= data.fadeStartY) {
-            var t = (y - data.fadeStartY) / (data.endY - data.fadeStartY);
-            var alpha = Math.max(0, 1 - t) * this.baseOpacity;
-
-            el.setAttribute('material', 'opacity', alpha);
-            el.setAttribute('material', 'transparent', true);
+            const t = (y - data.fadeStartY) / (data.endY - data.fadeStartY);
+            const alpha = Math.max(0, 1 - t) * this.baseOpacity;
+            el.setAttribute("material", "opacity", alpha);
+            el.setAttribute("material", "transparent", true);
           }
 
-          // 一定高さを超えたら削除
+          // 画面上端を超えたら削除
           if (y >= data.endY) {
             if (el.parentNode) {
               el.parentNode.removeChild(el);
@@ -79,34 +105,60 @@
         }
       });
 
-      // キャンバスに日本語テキストを書き込む
-     function drawMessageToCanvas() {
-        var canvas = document.getElementById('msgCanvas');
+      // ===== 1行分の plane を生成して canvas に描く =====
+      function spawnMessagePlane(text) {
+        const marker = document.querySelector("a-marker");
+        if (!marker) return;
+
+        const canvas = document.getElementById("msgCanvas");
         if (!canvas) return;
-      
-        // ちょっと広め＋少し縦も大きく
+
+        const ctx = canvas.getContext("2d");
+
         canvas.width = 1400;
         canvas.height = 300;
-      
-        var ctx = canvas.getContext('2d');
-      
-        // 透明背景
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-        // テキストスタイル（少し小さめに）
         ctx.font = "bold 80px 'Yu Gothic', 'Noto Sans JP', sans-serif";
         ctx.fillStyle = "#ffffff";
-        ctx.textAlign = "left";                 // ★ 左寄せ
+        ctx.textAlign = "left";
         ctx.textBaseline = "middle";
-      
-        var text = "今までありがとうございました！";
-        // 左に 80px の余白を空けて描く
+
         ctx.fillText(text, 80, canvas.height / 2);
-    　}
 
+        const plane = document.createElement("a-plane");
+        plane.setAttribute(
+          "material",
+          "src: #msgCanvas; transparent: true; side: double"
+        );
+        plane.setAttribute("height", "0.65");
+        plane.setAttribute("width", "2.4");
+        plane.setAttribute("position", "0 0 0.15");
+        plane.setAttribute("rotation", "-90 0 0");
+        plane.setAttribute(
+          "endroll",
+          "speed: 0.22; startY: -0.25; endY: 0.85; fadeStartY: 0.25"
+        );
 
-      document.addEventListener('DOMContentLoaded', function () {
-        drawMessageToCanvas();
+        marker.appendChild(plane);
+      }
+
+      // ===== 一定間隔で 1 行ずつ流すマネージャ =====
+      AFRAME.registerComponent("endrollmanager", {
+        tick: function () {
+          if (!spawnAllowed) return;
+          if (currentIndex >= messages.length) return;
+
+          spawnAllowed = false;
+          spawnMessagePlane(messages[currentIndex]);
+          currentIndex++;
+
+          if (currentIndex < messages.length) {
+            setTimeout(function () {
+              spawnAllowed = true;
+            }, 1700); // 次の行が出るまでの間隔（ms）
+          }
+        }
       });
     </script>
   </head>
@@ -121,26 +173,22 @@
       arjs="sourceType: webcam; debugUIEnabled: false;"
     >
       <a-assets>
-        <!-- テキストを書き込むキャンバス -->
         <canvas id="msgCanvas"></canvas>
       </a-assets>
 
       <!-- Hiro マーカー -->
-     <a-marker preset="hiro" endrollmanager>
-      <a-plane
-        color="#bf2d2d"
-        height="2"
-        width="2"
-        position="0 0 0"
-        rotation="-90 0 0"
-        opacity="0.40"
-      ></a-plane>
-    </a-marker>
+      <a-marker preset="hiro" endrollmanager>
+        <!-- 背景の赤い板 -->
+        <a-plane
+          color="#bf2d2d"
+          height="2"
+          width="2"
+          position="0 0 0"
+          rotation="-90 0 0"
+          opacity="0.40"
+        ></a-plane>
+      </a-marker>
 
-    
-    
-
-      <!-- カメラ -->
       <a-entity camera></a-entity>
     </a-scene>
   </body>
