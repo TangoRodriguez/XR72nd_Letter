@@ -71,8 +71,8 @@
       let firstDone = false;
 
       // マスク用：白背景の“窓”範囲（この中だけ表示）
-      const WINDOW_MIN_Y = -0.6;
-      const WINDOW_MAX_Y =  0.6;
+      const WINDOW_MIN_Y = -0.7;
+      const WINDOW_MAX_Y =  0.7;
 
       // キャンバスID用カウンタ
       let canvasIdCounter = 0;
@@ -151,7 +151,7 @@
       // ===== 各行を上に流すコンポーネント（全行同じ速度） =====
       AFRAME.registerComponent('scrollline', {
         schema: {
-          speed:   { type: 'number', default: 0.22 },
+          speed:   { type: 'number', default: 0.15 },
           startY:  { type: 'number', default: -1.0 },
           endY:    { type: 'number', default:  1.4 }
         },
