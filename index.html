@@ -4,9 +4,9 @@
     <meta charset="utf-8" />
     <title>XR Letter - End Roll</title>
 
+    <!-- Zen Kurenaido -->
     <link href="https://fonts.googleapis.com/css2?family=Zen+Kurenaido&display=swap" rel="stylesheet">
 
-    
     <!-- A-Frame / AR.js -->
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
     <script src="./js/aframe-ar.js?v=1.0.2"></script>
@@ -58,17 +58,46 @@
         "本当にありがとうございました。"
       ];
 
-      let currentIndex = 0;
+      // 0番目（「塩田さんへ」）は特別演出に使うので、
+      // 通常エンドロールは 1 行目（インデックス1）から開始
+      let currentIndex = 1;
       let spawnAllowed = true;
+      let firstDone = false; // 「塩田さんへ」演出が終わったら true
+
+      // ===== 共通：Canvas にテキストを描画（センタリング ＋ 白背景＋黒文字） =====
+      function drawTextToCanvas(text) {
+        const canvas = document.getElementById('msgCanvas');
+        if (!canvas) return null;
+        const ctx = canvas.getContext('2d');
+
+        // キャンバスサイズ（横長）
+        canvas.width  = 2800;
+        canvas.height = 600;
+
+        // 背景を白で塗る
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // テキストスタイル
+        ctx.font = "90px 'Zen Kurenaido', sans-serif";
+        ctx.fillStyle = "#000000";          // 黒文字
+        ctx.textAlign = "center";           // 中央揃え
+        ctx.textBaseline = "middle";
+
+        // 中央に描画
+        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+        return canvas;
+      }
 
       // ===== 上に流れて、時間ベースでフェードアウトするコンポーネント =====
       AFRAME.registerComponent('endroll', {
         schema: {
-          speed:        { type: 'number', default: 0.28 }, // 移動スピード（固定）
+          speed:        { type: 'number', default: 0.28 }, // 移動スピード
           startY:       { type: 'number', default: -0.25 },
           endY:         { type: 'number', default: 0.85 },
           fadeStartY:   { type: 'number', default: 0.25 },
-          fadeDuration: { type: 'number', default: 0.7 }   // ★ フェードアウト時間（秒）
+          fadeDuration: { type: 'number', default: 0.7 }   // フェードアウト時間（秒）
         },
 
         init: function () {
@@ -114,42 +143,106 @@
         }
       });
 
-      // ===== 1 行分の plane を生成して canvas に描く =====
+      // ===== 最初の「塩田さんへ」専用コンポーネント（フェードイン→ホールド→フェードアウト） =====
+      AFRAME.registerComponent('firstline', {
+        schema: {
+          fadeIn:   { type: 'number', default: 1.0 }, // フェードイン時間
+          hold:     { type: 'number', default: 3.0 }, // 表示しておく時間
+          fadeOut:  { type: 'number', default: 1.0 }  // フェードアウト時間
+        },
+
+        init: function () {
+          this.startTime = null;
+        },
+
+        tick: function (time, dt) {
+          const el = this.el;
+          const data = this.data;
+
+          if (this.startTime === null) {
+            this.startTime = time;
+          }
+
+          const t = (time - this.startTime) / 1000; // 秒
+          const total = data.fadeIn + data.hold + data.fadeOut;
+          let alpha = 0;
+
+          if (t < data.fadeIn) {
+            // フェードイン
+            alpha = t / data.fadeIn;
+          } else if (t < data.fadeIn + data.hold) {
+            // ホールド
+            alpha = 1;
+          } else if (t < total) {
+            // フェードアウト
+            const t2 = t - (data.fadeIn + data.hold);
+            alpha = 1 - (t2 / data.fadeOut);
+          } else {
+            // 完全に終わったら削除 & フラグON
+            alpha = 0;
+            if (el.parentNode) {
+              el.parentNode.removeChild(el);
+            }
+            firstDone = true;
+          }
+
+          el.setAttribute('material', 'transparent', true);
+          el.setAttribute('material', 'opacity', alpha);
+        }
+      });
+
+      // ===== 1 行分の plane（エンドロール用）を生成 =====
       function spawnMessagePlane(text) {
         const marker = document.querySelector('a-marker');
         if (!marker) return;
 
-        const canvas = document.getElementById('msgCanvas');
+        const canvas = drawTextToCanvas(text);
         if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-
-        canvas.width  = 2800;
-        canvas.height = 600;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.font = "82px 'Zen Kurenaido', sans-serif";
-        ctx.fillStyle = "#ffffff";
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-        ctx.fillText(text, 80, canvas.height / 2);
-        ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
-        ctx.shadowBlur = 12;
 
         const plane = document.createElement('a-plane');
         plane.setAttribute(
           'material',
           'src: #msgCanvas; transparent: true; side: double'
         );
-        plane.setAttribute('height', '0.65');
-        plane.setAttribute('width',  '2.4');
-        plane.setAttribute('position', '0 0 0.15');
-        plane.setAttribute('rotation', '0 0 0'); // マーカー上に寝かせる
 
-        // ★ フェード時間だけここで調整すればOK
+        // Canvasのアスペクト比 2800:600 ≒ 4.67:1
+        // width を 2.4 にするなら height ≒ 2.4 * (600/2800) ≒ 0.51
+        plane.setAttribute('width',  '2.4');
+        plane.setAttribute('height', '0.51');
+
+        // マーカー中心に配置
+        plane.setAttribute('position', '0 0 0.15');
+        plane.setAttribute('rotation', '0 0 0'); // カメラに正対
+
         plane.setAttribute(
           'endroll',
-          'speed: 0.22; startY: -0.25; endY: 0.85; fadeStartY: 0.25; fadeDuration: 0.7'
+          'speed: 0.28; startY: -0.25; endY: 0.85; fadeStartY: 0.25; fadeDuration: 0.7'
         );
+
+        marker.appendChild(plane);
+      }
+
+      // ===== 最初の「塩田さんへ」専用 plane を生成 =====
+      function spawnFirstMessagePlane() {
+        const marker = document.querySelector('a-marker');
+        if (!marker) return;
+
+        const canvas = drawTextToCanvas(messages[0]); // 「塩田さんへ」
+        if (!canvas) return;
+
+        const plane = document.createElement('a-plane');
+        plane.setAttribute(
+          'material',
+          'src: #msgCanvas; transparent: true; side: double'
+        );
+
+        plane.setAttribute('width',  '2.4');
+        plane.setAttribute('height', '0.51');
+        plane.setAttribute('position', '0 0 0.15');
+        plane.setAttribute('rotation', '0 0 0');
+
+        // fadeIn 1秒 → 3秒ホールド → fadeOut 1秒
+        plane.setAttribute('firstline', 'fadeIn: 1.0; hold: 3.0; fadeOut: 1.0');
 
         marker.appendChild(plane);
       }
@@ -160,7 +253,16 @@
           interval: { type: 'number', default: 4.0 } // 次の行が出るまでの間隔（秒）
         },
 
+        init: function () {
+          // シーンロード後に一度だけ「塩田さんへ」を出す
+          // マーカー自体はもうDOMにあるので、そのまま生成してOK
+          spawnFirstMessagePlane();
+        },
+
         tick: function () {
+          // まだ最初の「塩田さんへ」が終わっていなければ何もしない
+          if (!firstDone) return;
+
           if (!spawnAllowed) return;
           if (currentIndex >= messages.length) return;
 
@@ -194,17 +296,7 @@
 
       <!-- Hiro マーカー -->
       <a-marker preset="hiro" endrollmanager>
-        <!-- 必要ならここに赤い板を戻してもOK -->
-        <!--
-        <a-plane
-          color="#bf2d2d"
-          height="2"
-          width="2"
-          position="0 0 0"
-          rotation="-90 0 0"
-          opacity="0.40"
-        ></a-plane>
-        -->
+        <!-- 背景板が欲しければここに追加もOK -->
       </a-marker>
 
       <a-entity camera></a-entity>
