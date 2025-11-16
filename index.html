@@ -4,6 +4,9 @@
     <meta charset="utf-8" />
     <title>XR Letter - End Roll</title>
 
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Kurenaido&display=swap" rel="stylesheet">
+
+    
     <!-- A-Frame / AR.js -->
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
     <script src="./js/aframe-ar.js?v=1.0.2"></script>
@@ -37,8 +40,7 @@
         "いつも活動できたことが嬉しかったです。",
         "塩田さんは",
         "僕にとって憧れの人です。",
-        "明るさにも",
-        "優しさにも",
+        "明るさにも優しさにも",
         "全てに惹かれています。",
         "塩田さんがXR班をつくったことで",
         "僕はXRという世界に出会いました。",
@@ -62,7 +64,7 @@
       // ===== 上に流れて、時間ベースでフェードアウトするコンポーネント =====
       AFRAME.registerComponent('endroll', {
         schema: {
-          speed:        { type: 'number', default: 0.22 }, // 移動スピード（固定）
+          speed:        { type: 'number', default: 0.28 }, // 移動スピード（固定）
           startY:       { type: 'number', default: -0.25 },
           endY:         { type: 'number', default: 0.85 },
           fadeStartY:   { type: 'number', default: 0.25 },
@@ -121,11 +123,11 @@
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
 
-        canvas.width  = 1400;
+        canvas.width  = 3000;
         canvas.height = 300;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.font = "bold 80px 'Yu Gothic', 'Noto Sans JP', sans-serif";
+        ctx.font = "82px 'Zen Kurenaido', sans-serif";
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
