@@ -2,7 +2,7 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <title>XR Letter - Minimal Test</title>
+    <title>XR Letter - End Roll</title>
 
     <!-- A-Frame / AR.js -->
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
@@ -13,26 +13,136 @@
         margin: 0;
         overflow: hidden;
       }
+      .overlay {
+        position: fixed;
+        z-index: 10;
+        top: 10px;
+        left: 10px;
+        color: white;
+        font-family: sans-serif;
+      }
     </style>
+
+    <script>
+      // エンドロール用コンポーネント（planeを上に流してフェードアウト）
+      AFRAME.registerComponent('endroll', {
+        schema: {
+          speed: { type: 'number', default: 0.25 },     // 上昇速度（m/s）
+          startY: { type: 'number', default: -0.10 },    // 出現位置
+          endY:   { type: 'number', default: 0.40 },     // 消える高さ
+          fadeStartY: { type: 'number', default: 0.10 }  // フェード開始位置
+        },
+
+        init: function () {
+          var data = this.data;
+          var el = this.el;
+
+          var pos = el.getAttribute('position') || {x: 0, y: 0, z: 0};
+          pos.y = data.startY;
+          el.setAttribute('position', pos);
+
+          this.baseOpacity = 1.0;
+        },
+
+        tick: function (time, dt) {
+          var data = this.data;
+          var el = this.el;
+
+          var deltaSec = dt / 1000;
+          var pos = el.getAttribute('position');
+          pos.y += data.speed * deltaSec;
+          el.setAttribute('position', pos);
+
+          var y = pos.y;
+
+          // フェードアウト
+          if (y >= data.fadeStartY) {
+            var t = (y - data.fadeStartY) / (data.endY - data.fadeStartY);
+            var alpha = Math.max(0, 1 - t) * this.baseOpacity;
+
+            el.setAttribute('material', 'opacity', alpha);
+            el.setAttribute('material', 'transparent', true);
+          }
+
+          // 一定高さを超えたら削除
+          if (y >= data.endY) {
+            if (el.parentNode) {
+              el.parentNode.removeChild(el);
+            }
+          }
+        }
+      });
+
+      // キャンバスに日本語テキストを書き込む
+      function drawMessageToCanvas() {
+        var canvas = document.getElementById('msgCanvas');
+        if (!canvas) return;
+
+        canvas.width = 1024;
+        canvas.height = 256;
+        var ctx = canvas.getContext('2d');
+
+        // 透明背景
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // テキストスタイル
+        ctx.font = "bold 80px 'Yu Gothic', 'Noto Sans JP', sans-serif";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        var text = "今までありがとうございました！";
+        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        drawMessageToCanvas();
+      });
+    </script>
   </head>
 
   <body>
+    <div class="overlay">XR Letter Loading... (End Roll)</div>
+
     <a-scene
       embedded
       renderer="antialias: true; alpha: true"
       vr-mode-ui="enabled: false"
       arjs="sourceType: webcam; debugUIEnabled: false;"
     >
+      <a-assets>
+        <!-- テキストを書き込むキャンバス -->
+        <canvas id="msgCanvas"></canvas>
+      </a-assets>
+
+      <!-- Hiro マーカー -->
       <a-marker preset="hiro">
-        <!-- ★ でかい青い板だけ表示するテスト ★ -->
-        <a-plane
-          color="#0000ff"
-          height="2"
-          width="2"
-          position="0 1 0"
-        ></a-plane>
+        <!-- 座標系を立て直すラッパー -->
+        <a-entity rotation="-90 0 0">
+
+          <!-- デバッグ用 赤い板（まだ残しておく） -->
+          <a-entity
+            geometry="primitive: box; height: 0.6; width: 0.6; depth: 0.05"
+            material="color: red; opacity: 0.3"
+            position="0 0.3 0"
+          ></a-entity>
+
+          <!-- ★ キャンバスを貼ったメッセージプレーン（エンドロール） -->
+          <a-plane
+            id="messagePlane"
+            src="#msgCanvas"
+            endroll="speed: 0.25; startY: -0.10; endY: 0.40; fadeStartY: 0.10"
+            position="0 0 0.05"
+            rotation="0 0 0"
+            width="1.6"
+            height="0.4"
+            material="transparent: true; side: double"
+          ></a-plane>
+
+        </a-entity>
       </a-marker>
 
+      <!-- カメラ -->
       <a-entity camera></a-entity>
     </a-scene>
   </body>
