@@ -75,8 +75,8 @@
       ];
 
       // マスク用ウィンドウ（このY範囲だけ表示）
-      const WINDOW_MIN_Y = -0.6;
-      const WINDOW_MAX_Y =  0.6;
+      const WINDOW_MIN_Y = -0.7;
+      const WINDOW_MAX_Y =  0.7;
 
       // スクロール速度など（好みで調整OK）
       const SCROLL_SPEED = 0.18;   // 上方向のスピード（m/s）
@@ -344,7 +344,7 @@
           const dist = WINDOW_MAX_Y - lastStartY;
           const scrollTime = dist / SCROLL_SPEED;
 
-          const margin = 1.0; // ちょっと余裕
+          const margin = -1.0; 
           const delayMs = (scrollTime + margin) * 1000;
 
           setTimeout(() => {
