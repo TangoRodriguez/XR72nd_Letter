@@ -118,31 +118,31 @@
       </a-assets>
 
       <!-- Hiro マーカー -->
-      <a-marker preset="hiro">
+     <a-marker preset="hiro">
 
-        <!-- 赤い板（残したいなら残す、不要なら削除OK） -->
-        <a-plane
-          color="#bf2d2d"
-          height="2"
-          width="2"
-          position="0 0 0"
-          rotation="-90 0 0"
-          opacity="0.4"
-        ></a-plane>
-      
-        <!-- ★ しっかり前に浮き出るテキスト ★ -->
-        <a-text
-          value="今までありがとうございました！"
-          color="#ffffff"
-          align="center"
-          side="double"
-          width="3.5"
-          position="0 1.2 0.2"
-          rotation="-90 0 0"
-        ></a-text>
-      
-      </a-marker>
-
+      <!-- 赤い板 -->
+      <a-plane
+        color="#bf2d2d"
+        height="2"
+        width="2"
+        position="0 0 0"
+        rotation="-90 0 0"
+        opacity="0.40"
+      ></a-plane>
+    
+      <!-- 文字（Canvasテクスチャ）-->
+      <a-plane
+        id="msgPlane"
+        material="src: #msgCanvas; transparent: true"
+        height="0.65"
+        width="2"
+        position="0 0.55 0.15"
+        rotation="-90 0 0"
+      ></a-plane>
+    
+    </a-marker>
+    
+    
 
       <!-- カメラ -->
       <a-entity camera></a-entity>
