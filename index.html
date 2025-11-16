@@ -32,52 +32,62 @@
     </style>
 
     <script>
-      // ===== 表示する文章（1行ごと） =====
-      const messages = [
-        "塩田さんへ",  // 0: 最初の演出専用
+      // ===== 文章 =====
+      const firstLineText = "塩田さんへ"; // 最初に中央でフェードイン/アウトする行
 
+      // スクロールで流す部分（空行は "" を入れる）
+      const scrollLines = [
         "同じ学科の後輩として、",
         "同じ班の後輩として、",
         "いつも活動できたことが嬉しかったです。",
-
+        "",
         "塩田さんは、",
         "僕にとって憧れの人です。",
         "明るさにも、優しさにも、",
         "全てに惹かれています。",
-
+        "",
         "塩田さんがXR班をつくったことで、",
         "僕はXRという世界に出会いました。",
         "XRに触れた日から、",
         "視界が一気に広がりました。",
-
+        "",
         "今回の理工展で企画を担当できたのも、",
         "塩田さんがいたからです。",
-
+        "",
         "来期は、もっと面白いものを作ります。",
         "胸を張って見せられるものを作ります。",
-
+        "",
         "このAR手紙には、",
         "これからの僕の進捗を、",
         "3Dオブジェクトで追加していこうと思っています。",
-
+        "",
         "よかったら、また覗きに来てください。",
         "その時、少しでも成長した僕を",
         "見せられますように。",
-
-        "本当にありがとうございました。"
+        "",
+        "", "", ""   // ★ ここは最後に大きな空白を作るための空行
       ];
 
-      // 「塩田さんへ」が終わったかどうか
-      let firstDone = false;
+      // 最後に中央で止まる2行
+      const finalBlockLines = [
+        "本当にありがとうございました。",
+        "齋藤旦伍より"
+      ];
 
-      // マスク用：白背景の“窓”範囲（この中だけ表示）
-      const WINDOW_MIN_Y = -0.7;
-      const WINDOW_MAX_Y =  0.7;
+      // マスク用ウィンドウ（このY範囲だけ表示）
+      const WINDOW_MIN_Y = -0.6;
+      const WINDOW_MAX_Y =  0.6;
 
-      // キャンバスID用カウンタ
-      let canvasIdCounter = 0;
+      // スクロール速度など（好みで調整OK）
+      const SCROLL_SPEED = 0.18;   // 上方向のスピード（m/s）
+      const BASE_START_Y = -1.0;   // 1行目のスタート位置
+      const LINE_GAP     = 0.22;   // 行間（小さくすると行が詰まる）
 
-      // ===== 1行ごとに専用キャンバスを作る =====
+      // 内部状態
+      let firstDone = false;      // 「塩田さんへ」が終わったか
+      let canvasIdCounter = 0;    // キャンバスID用カウンタ
+
+      // ===== 共通：1行用キャンバス作成（空行も「空白高さ」として扱う） =====
       function createCanvasForText(text) {
         const assets = document.querySelector('a-assets');
         if (!assets) return null;
@@ -98,13 +108,17 @@
         ctx.fillStyle = "#000000";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(text, width / 2, height / 2);
+
+        // ★ 空行は文字を描かないが、高さは確保したいので canvas 自体は使う
+        if (text.trim() !== "") {
+          ctx.fillText(text, width / 2, height / 2);
+        }
 
         assets.appendChild(canvas);
         return { id, width, height };
       }
 
-      // ===== 最初の1行「塩田さんへ」：中央でフェードイン/アウト =====
+      // ===== 最初の1行：中央でフェードイン → ホールド → フェードアウト =====
       AFRAME.registerComponent('firstline', {
         schema: {
           fadeIn:  { type: 'number', default: 1.0 },
@@ -117,14 +131,14 @@
         },
 
         tick: function (time, dt) {
-          const el = this.el;
+          const el   = this.el;
           const data = this.data;
 
           if (this.startTime === null) {
             this.startTime = time;
           }
 
-          const t = (time - this.startTime) / 1000; // 秒
+          const t = (time - this.startTime) / 1000;
           const total = data.fadeIn + data.hold + data.fadeOut;
           let alpha = 0;
 
@@ -148,12 +162,12 @@
         }
       });
 
-      // ===== 各行を上に流すコンポーネント（全行同じ速度） =====
+      // ===== スクロール行：上に動かしつつ、白ウィンドウだけ表示 =====
       AFRAME.registerComponent('scrollline', {
         schema: {
-          speed:   { type: 'number', default: 0.15 },
-          startY:  { type: 'number', default: -1.0 },
-          endY:    { type: 'number', default:  1.4 }
+          speed:  { type: 'number', default: SCROLL_SPEED },
+          startY: { type: 'number', default: BASE_START_Y },
+          endY:   { type: 'number', default: 1.4 }
         },
 
         init: function () {
@@ -170,12 +184,12 @@
 
           const deltaSec = dt / 1000;
           const pos = el.getAttribute('position');
-          pos.y += data.speed * deltaSec;     // 上方向へ
+          pos.y += data.speed * deltaSec;
           el.setAttribute('position', pos);
 
           const y = pos.y;
 
-          // ★ 白背景の窓の中だけ表示、それ以外は非表示（マスク風）
+          // マスク：白背景の範囲だけ不透明、それ以外は完全に透明
           if (y < WINDOW_MIN_Y || y > WINDOW_MAX_Y) {
             el.setAttribute('material', 'transparent', true);
             el.setAttribute('material', 'opacity', 0.0);
@@ -193,14 +207,58 @@
         }
       });
 
-      // ===== Manager：最初の1行 → その後、全行を“下に並べて”一気に流す =====
+      // ===== 最後の2行：中央でフェードイン → ホールド → フェードアウト =====
+      AFRAME.registerComponent('finalblock', {
+        schema: {
+          fadeIn:  { type: 'number', default: 1.0 },
+          hold:    { type: 'number', default: 3.0 },
+          fadeOut: { type: 'number', default: 1.0 }
+        },
+
+        init: function () {
+          this.startTime = null;
+        },
+
+        tick: function (time, dt) {
+          const el   = this.el;
+          const data = this.data;
+
+          if (this.startTime === null) {
+            this.startTime = time;
+          }
+
+          const t = (time - this.startTime) / 1000;
+          const total = data.fadeIn + data.hold + data.fadeOut;
+          let alpha = 0;
+
+          if (t < data.fadeIn) {
+            alpha = t / data.fadeIn;
+          } else if (t < data.fadeIn + data.hold) {
+            alpha = 1;
+          } else if (t < total) {
+            const t2 = t - (data.fadeIn + data.hold);
+            alpha = 1 - (t2 / data.fadeOut);
+          } else {
+            alpha = 0;
+            if (el.parentNode) {
+              el.parentNode.removeChild(el);
+            }
+          }
+
+          el.setAttribute('material', 'transparent', true);
+          el.setAttribute('material', 'opacity', alpha);
+        }
+      });
+
+      // ===== Manager：最初 → スクロール → 最後の2行 =====
       AFRAME.registerComponent('scroll-manager', {
         init: function () {
-          this.built = false;
+          this.scrollBuilt = false;
+          this.finalScheduled = false;
 
-          // まず「塩田さんへ」を中央に表示
+          // 1) 最初の「塩田さんへ」
           const marker = this.el;
-          const tex = createCanvasForText(messages[0]);
+          const tex = createCanvasForText(firstLineText);
           if (!tex) return;
 
           const plane = document.createElement('a-plane');
@@ -215,7 +273,7 @@
 
           plane.setAttribute('width',  planeWidth);
           plane.setAttribute('height', planeHeight);
-          plane.setAttribute('position', '0 0 0.12'); // 白背景中央
+          plane.setAttribute('position', '0 0 0.12');
           plane.setAttribute('rotation', '0 0 0');
           plane.setAttribute('firstline', 'fadeIn: 1.0; hold: 3.0; fadeOut: 1.0');
 
@@ -223,22 +281,29 @@
         },
 
         tick: function (time, dt) {
-          // 「塩田さんへ」が終わるまで待つ
-          if (!firstDone) return;
-          if (this.built) return;
+          const marker = this.el;
 
-          this.buildScrollLines();
-          this.built = true;
+          // 最初の行が終わるまで待機
+          if (!firstDone) return;
+
+          // 2) スクロール行を組み立て（1回だけ）
+          if (!this.scrollBuilt) {
+            this.buildScrollLines();
+            this.scrollBuilt = true;
+          }
+
+          // 3) 最後のブロックを出すタイミングをまだセットしていなければ計算して予約
+          if (this.scrollBuilt && !this.finalScheduled) {
+            this.scheduleFinalBlock();
+            this.finalScheduled = true;
+          }
         },
 
         buildScrollLines: function () {
           const marker = this.el;
-          const baseStartY = -1.0;  // 1行目が出てくる位置
-          const gap       = 0.22;   // 下に並べる間隔
-          const speed     = 0.22;   // 上方向の速度
 
-          for (let i = 1; i < messages.length; i++) {
-            const text = messages[i];
+          for (let i = 0; i < scrollLines.length; i++) {
+            const text = scrollLines[i];
             const tex = createCanvasForText(text);
             if (!tex) continue;
 
@@ -257,14 +322,78 @@
             plane.setAttribute('position', `0 0 0.12`);
             plane.setAttribute('rotation', '0 0 0');
 
-            const startY = baseStartY - (i - 1) * gap; // 全行を下に並べる
+            // 下方向に等間隔で並べておき、一斉に上に流す
+            const startY = BASE_START_Y - i * LINE_GAP;
             plane.setAttribute(
               'scrollline',
-              `speed: ${speed}; startY: ${startY}; endY: 1.4`
+              `speed: ${SCROLL_SPEED}; startY: ${startY}; endY: 1.4`
             );
 
             marker.appendChild(plane);
           }
+        },
+
+        // スクロールがだいたい終わった頃に最後のブロックを出す
+        scheduleFinalBlock: function () {
+          const marker = this.el;
+
+          const lastIndex = scrollLines.length - 1;
+          const lastStartY = BASE_START_Y - lastIndex * LINE_GAP;
+
+          // 「最後の行がウィンドウ上端を通過するまで」の時間をざっくり計算
+          const dist = WINDOW_MAX_Y - lastStartY;
+          const scrollTime = dist / SCROLL_SPEED;
+
+          const margin = 2.0; // ちょっと余裕
+          const delayMs = (scrollTime + margin) * 1000;
+
+          setTimeout(() => {
+            // 最後の2行を1枚のキャンバスとして描画
+            const assets = document.querySelector('a-assets');
+            if (!assets) return;
+
+            const id = `finalCanvas`;
+            const canvas = document.createElement('canvas');
+            canvas.id = id;
+            const width  = 2048;
+            const height = 512;
+            canvas.width  = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, width, height);
+
+            ctx.font = "80px 'Zen Kurenaido', sans-serif";
+            ctx.fillStyle = "#000000";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            // 2行で中央寄せ
+            const line1 = finalBlockLines[0];
+            const line2 = finalBlockLines[1];
+            ctx.fillText(line1, width / 2, height / 2 - 60);
+            ctx.fillText(line2, width / 2, height / 2 + 60);
+
+            assets.appendChild(canvas);
+
+            const plane = document.createElement('a-plane');
+            plane.setAttribute(
+              'material',
+              `src: #${id}; transparent: true; side: double`
+            );
+
+            const planeWidth  = 2.2;
+            const aspect      = height / width;
+            const planeHeight = planeWidth * aspect;
+
+            plane.setAttribute('width',  planeWidth);
+            plane.setAttribute('height', planeHeight);
+            plane.setAttribute('position', '0 0 0.13'); // 中央
+            plane.setAttribute('rotation', '0 0 0');
+            plane.setAttribute('finalblock', 'fadeIn: 1.0; hold: 3.0; fadeOut: 1.5');
+
+            marker.appendChild(plane);
+          }, delayMs);
         }
       });
     </script>
@@ -279,12 +408,12 @@
       vr-mode-ui="enabled: false"
       arjs="sourceType: webcam; debugUIEnabled: false;"
     >
-      <!-- ここには最初は何も入っていない。JS側で行ごとに canvas を追加する -->
+      <!-- JS 側で行ごとに canvas を追加していく -->
       <a-assets></a-assets>
 
       <!-- Hiro マーカー -->
       <a-marker preset="hiro" scroll-manager>
-        <!-- ★ 常に表示される白い縦長背景（窓） -->
+        <!-- 常に表示される白い縦長背景 -->
         <a-plane
           color="#ffffff"
           width="2.4"
