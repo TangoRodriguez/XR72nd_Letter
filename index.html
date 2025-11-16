@@ -134,7 +134,7 @@
         plane.setAttribute("height", "0.65");
         plane.setAttribute("width", "2.4");
         plane.setAttribute("position", "0 0 0.15");
-        plane.setAttribute("rotation", "-90 0 0");
+        plane.setAttribute("rotation", "0 0 0");
         plane.setAttribute(
           "endroll",
           "speed: 0.22; startY: -0.25; endY: 0.85; fadeStartY: 0.25"
@@ -156,7 +156,7 @@
           if (currentIndex < messages.length) {
             setTimeout(function () {
               spawnAllowed = true;
-            }, 5000); // 次の行が出るまでの間隔（ms）
+            }, 4000); // 次の行が出るまでの間隔（ms）
           }
         }
       });
@@ -180,12 +180,7 @@
       <a-marker preset="hiro" endrollmanager>
         <!-- 背景の赤い板 -->
         <a-plane
-          color="#bf2d2d"
-          height="2"
-          width="2"
-          position="0 0 0"
-          rotation="-90 0 0"
-          opacity="0.40"
+          
         ></a-plane>
       </a-marker>
 
