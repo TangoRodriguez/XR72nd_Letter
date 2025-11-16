@@ -8,6 +8,10 @@
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
     <script src="./js/aframe-ar.js?v=1.0.1"></script>
     <script src="./js/app.js?v=1.0.1"></script>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+
 
 
     <style>
@@ -76,26 +80,30 @@
       });
 
       // キャンバスに日本語テキストを書き込む
-      function drawMessageToCanvas() {
+     function drawMessageToCanvas() {
         var canvas = document.getElementById('msgCanvas');
         if (!canvas) return;
-
-        canvas.width = 1024;
-        canvas.height = 256;
+      
+        // ちょっと広め＋少し縦も大きく
+        canvas.width = 1400;
+        canvas.height = 300;
+      
         var ctx = canvas.getContext('2d');
-
+      
         // 透明背景
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // テキストスタイル
+      
+        // テキストスタイル（少し小さめに）
         ctx.font = "bold 80px 'Yu Gothic', 'Noto Sans JP', sans-serif";
         ctx.fillStyle = "#ffffff";
-        ctx.textAlign = "center";
+        ctx.textAlign = "left";                 // ★ 左寄せ
         ctx.textBaseline = "middle";
-
+      
         var text = "今までありがとうございました！";
-        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-      }
+        // 左に 80px の余白を空けて描く
+        ctx.fillText(text, 80, canvas.height / 2);
+    　}
+
 
       document.addEventListener('DOMContentLoaded', function () {
         drawMessageToCanvas();
