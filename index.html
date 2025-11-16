@@ -59,133 +59,51 @@
       let currentIndex = 0;
       let spawnAllowed = true;
 
-      // ===== 上に流れてフェードアウトするコンポーネント =====
-      AFRAME.registerComponent("endroll", {
-        schema: {
-          speed: { type: "number", default: 0.22 },
-          startY: { type: "number", default: -0.25 },
-          endY: { type: "number", default: 0.85 },
-          fadeStartY: { type: "number", default: 0.25 }
-        },
-
-        init: function () {
-          const data = this.data;
-          const el = this.el;
-          const pos = el.getAttribute("position") || { x: 0, y: 0, z: 0 };
-          pos.y = data.startY;
-          el.setAttribute("position", pos);
-          this.baseOpacity = 1.0;
-        },
-
-        tick: function (time, dt) {
-          const data = this.data;
-          const el = this.el;
-
-          const deltaSec = dt / 1000;
-          const pos = el.getAttribute("position");
-          pos.y += data.speed * deltaSec;
-          el.setAttribute("position", pos);
-
-          const y = pos.y;
-
-          // フェードアウト
-          if (y >= data.fadeStartY) {
-            const t = (y - data.fadeStartY) / (data.endY - data.fadeStartY);
-            const alpha = Math.max(0, 1 - t) * this.baseOpacity;
-            el.setAttribute("material", "opacity", alpha);
-            el.setAttribute("material", "transparent", true);
-          }
-
-          // 画面上端を超えたら削除
-          if (y >= data.endY) {
-            if (el.parentNode) {
-              el.parentNode.removeChild(el);
-            }
-          }
-        }
-      });
-
-      // ===== 1行分の plane を生成して canvas に描く =====
-      function spawnMessagePlane(text) {
-        const marker = document.querySelector("a-marker");
-        if (!marker) return;
-
-        const canvas = document.getElementById("msgCanvas");
-        if (!canvas) return;
-
-        const ctx = canvas.getContext("2d");
-
-        canvas.width = 1400;
-        canvas.height = 300;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.font = "bold 80px 'Yu Gothic', 'Noto Sans JP', sans-serif";
-        ctx.fillStyle = "#ffffff";
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-
-        ctx.fillText(text, 80, canvas.height / 2);
-
-        const plane = document.createElement("a-plane");
-        plane.setAttribute(
-          "material",
-          "src: #msgCanvas; transparent: true; side: double"
-        );
-        plane.setAttribute("height", "0.65");
-        plane.setAttribute("width", "2.4");
-        plane.setAttribute("position", "0 0 0.15");
-        plane.setAttribute("rotation", "0 0 0");
-        plane.setAttribute(
-          "endroll",
-          "speed: 0.22; startY: -0.25; endY: 0.85; fadeStartY: 0.25; fadeDuration: 0.7"
-        );
-
-
-        marker.appendChild(plane);
-      }
-
-      // ===== 一定間隔で 1 行ずつ流すマネージャ =====
+      // ===== 上に流れて、時間ベースでフェードアウトするコンポーネント =====
       AFRAME.registerComponent('endroll', {
         schema: {
-          speed: { type: 'number', default: 0.25 },
-          startY: { type: 'number', default: -0.10 },
-          endY: { type: 'number', default: 0.40 },
-          fadeStartY: { type: 'number', default: 0.10 },
-          fadeDuration: { type: 'number', default: 0.6 } // ★ フェードアウト時間（秒）
+          speed:        { type: 'number', default: 0.22 }, // 移動スピード（固定）
+          startY:       { type: 'number', default: -0.25 },
+          endY:         { type: 'number', default: 0.85 },
+          fadeStartY:   { type: 'number', default: 0.25 },
+          fadeDuration: { type: 'number', default: 0.7 }   // ★ フェードアウト時間（秒）
         },
-      
+
         init: function () {
-          var el = this.el;
-          var pos = el.getAttribute('position') || {x: 0, y: 0, z: 0};
-          pos.y = this.data.startY;
+          const el = this.el;
+          const data = this.data;
+          const pos = el.getAttribute('position') || { x: 0, y: 0, z: 0 };
+          pos.y = data.startY;
           el.setAttribute('position', pos);
-      
-          this.fadeStartTimer = null; // ★ フェード開始時刻
+
+          this.fadeStartTime = null; // フェード開始時刻
         },
-      
+
         tick: function (time, dt) {
-          var data = this.data;
-          var el = this.el;
-      
-          var deltaSec = dt / 1000;
-          var pos = el.getAttribute('position');
+          const el = this.el;
+          const data = this.data;
+
+          // 上方向に移動
+          const deltaSec = dt / 1000;
+          const pos = el.getAttribute('position');
           pos.y += data.speed * deltaSec;
           el.setAttribute('position', pos);
-      
-          // フェード開始位置に達したらタイマー開始
-          if (pos.y >= data.fadeStartY && this.fadeStartTimer === null) {
-            this.fadeStartTimer = time;
+
+          // フェード開始位置に来たら時間計測開始
+          if (pos.y >= data.fadeStartY && this.fadeStartTime === null) {
+            this.fadeStartTime = time;
           }
-      
-          // フェードアウト処理
-          if (this.fadeStartTimer !== null) {
-            var elapsed = (time - this.fadeStartTimer) / 1000; // 秒
-            var alpha = Math.max(0, 1 - elapsed / data.fadeDuration);
+
+          // フェードアウト処理（時間ベース）
+          if (this.fadeStartTime !== null) {
+            const elapsed = (time - this.fadeStartTime) / 1000; // 経過秒
+            let alpha = 1 - (elapsed / data.fadeDuration);
+            if (alpha < 0) alpha = 0;
             el.setAttribute('material', 'transparent', true);
             el.setAttribute('material', 'opacity', alpha);
           }
-      
-          // 一定高さを超えたら削除
+
+          // 画面上端を超えたら削除
           if (pos.y >= data.endY) {
             if (el.parentNode) {
               el.parentNode.removeChild(el);
@@ -194,6 +112,66 @@
         }
       });
 
+      // ===== 1 行分の plane を生成して canvas に描く =====
+      function spawnMessagePlane(text) {
+        const marker = document.querySelector('a-marker');
+        if (!marker) return;
+
+        const canvas = document.getElementById('msgCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        canvas.width  = 1400;
+        canvas.height = 300;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = "bold 80px 'Yu Gothic', 'Noto Sans JP', sans-serif";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, 80, canvas.height / 2);
+
+        const plane = document.createElement('a-plane');
+        plane.setAttribute(
+          'material',
+          'src: #msgCanvas; transparent: true; side: double'
+        );
+        plane.setAttribute('height', '0.65');
+        plane.setAttribute('width',  '2.4');
+        plane.setAttribute('position', '0 0 0.15');
+        plane.setAttribute('rotation', '0 0 0'); // マーカー上に寝かせる
+
+        // ★ フェード時間だけここで調整すればOK
+        plane.setAttribute(
+          'endroll',
+          'speed: 0.22; startY: -0.25; endY: 0.85; fadeStartY: 0.25; fadeDuration: 0.7'
+        );
+
+        marker.appendChild(plane);
+      }
+
+      // ===== 一定間隔で 1 行ずつ流すマネージャ =====
+      AFRAME.registerComponent('endrollmanager', {
+        schema: {
+          interval: { type: 'number', default: 4.0 } // 次の行が出るまでの間隔（秒）
+        },
+
+        tick: function () {
+          if (!spawnAllowed) return;
+          if (currentIndex >= messages.length) return;
+
+          spawnAllowed = false;
+          spawnMessagePlane(messages[currentIndex]);
+          currentIndex++;
+
+          if (currentIndex < messages.length) {
+            const intervalMs = this.data.interval * 1000;
+            setTimeout(() => {
+              spawnAllowed = true;
+            }, intervalMs);
+          }
+        }
+      });
     </script>
   </head>
 
@@ -212,8 +190,17 @@
 
       <!-- Hiro マーカー -->
       <a-marker preset="hiro" endrollmanager>
-        <!-- 背景の赤い板 -->
-        
+        <!-- 必要ならここに赤い板を戻してもOK -->
+        <!--
+        <a-plane
+          color="#bf2d2d"
+          height="2"
+          width="2"
+          position="0 0 0"
+          rotation="-90 0 0"
+          opacity="0.40"
+        ></a-plane>
+        -->
       </a-marker>
 
       <a-entity camera></a-entity>
