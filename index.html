@@ -89,10 +89,10 @@
       AFRAME.registerComponent('endroll', {
         schema: {
           speed:        { type: 'number', default: 0.28 }, // 移動スピード
-          startY:       { type: 'number', default: -0.25 },
-          endY:         { type: 'number', default: 0.85 },
+          startY:       { type: 'number', default: -0.5 },
+          endY:         { type: 'number', default: 1.5 },
           fadeStartY:   { type: 'number', default: 0.25 },
-          fadeDuration: { type: 'number', default: 0.7 }   // フェードアウト時間（秒）
+          fadeDuration: { type: 'number', default: 0.9 }   // フェードアウト時間（秒）
         },
 
         init: function () {
