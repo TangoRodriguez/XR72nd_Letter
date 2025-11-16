@@ -65,7 +65,7 @@
           speed: { type: "number", default: 0.22 },
           startY: { type: "number", default: -0.25 },
           endY: { type: "number", default: 0.85 },
-          fadeStartY: { type: "number", default: 0.25 }
+          fadeStartY: { type: "number", default: 0.45 }
         },
 
         init: function () {
@@ -156,7 +156,7 @@
           if (currentIndex < messages.length) {
             setTimeout(function () {
               spawnAllowed = true;
-            }, 4000); // 次の行が出るまでの間隔（ms）
+            }, 3000); // 次の行が出るまでの間隔（ms）
           }
         }
       });
@@ -179,9 +179,7 @@
       <!-- Hiro マーカー -->
       <a-marker preset="hiro" endrollmanager>
         <!-- 背景の赤い板 -->
-        <a-plane
-          
-        ></a-plane>
+        
       </a-marker>
 
       <a-entity camera></a-entity>
