@@ -2,7 +2,7 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <title>XR Letter - Scroll Credits</title>
+    <title>XR Letter Loading... (Scroll Credits)</title>
 
     <!-- Zen Kurenaido -->
     <link href="https://fonts.googleapis.com/css2?family=Zen+Kurenaido&display=swap" rel="stylesheet">
@@ -70,31 +70,38 @@
       // 「塩田さんへ」が終わったかどうか
       let firstDone = false;
 
-      // 白帯の“窓”範囲（この中だけ表示）
+      // マスク用：白背景の“窓”範囲（この中だけ表示）
       const WINDOW_MIN_Y = -0.6;
       const WINDOW_MAX_Y =  0.6;
 
-      // 共通：1行分のテキストをキャンバスに描く
-      function drawLineToCanvas(text) {
-        const canvas = document.getElementById('msgCanvas');
-        if (!canvas) return null;
+      // キャンバスID用カウンタ
+      let canvasIdCounter = 0;
 
-        const ctx = canvas.getContext('2d');
-        const width = 2048;
+      // ===== 1行ごとに専用キャンバスを作る =====
+      function createCanvasForText(text) {
+        const assets = document.querySelector('a-assets');
+        if (!assets) return null;
+
+        const id = `msgCanvas_${canvasIdCounter++}`;
+        const canvas = document.createElement('canvas');
+        canvas.id = id;
+
+        const width  = 2048;
         const height = 256;
-
         canvas.width  = width;
         canvas.height = height;
 
+        const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, width, height);
+
         ctx.font = "80px 'Zen Kurenaido', sans-serif";
         ctx.fillStyle = "#000000";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-
         ctx.fillText(text, width / 2, height / 2);
 
-        return canvas;
+        assets.appendChild(canvas);
+        return { id, width, height };
       }
 
       // ===== 最初の1行「塩田さんへ」：中央でフェードイン/アウト =====
@@ -146,7 +153,7 @@
         schema: {
           speed:   { type: 'number', default: 0.22 },
           startY:  { type: 'number', default: -1.0 },
-          endY:    { type: 'number', default:  1.2 }
+          endY:    { type: 'number', default:  1.4 }
         },
 
         init: function () {
@@ -193,17 +200,17 @@
 
           // まず「塩田さんへ」を中央に表示
           const marker = this.el;
-          const canvas = drawLineToCanvas(messages[0]);
-          if (!canvas) return;
+          const tex = createCanvasForText(messages[0]);
+          if (!tex) return;
 
           const plane = document.createElement('a-plane');
           plane.setAttribute(
             'material',
-            'src: #msgCanvas; transparent: true; side: double'
+            `src: #${tex.id}; transparent: true; side: double`
           );
 
           const planeWidth  = 2.2;
-          const aspect      = canvas.height / canvas.width; // 256 / 2048
+          const aspect      = tex.height / tex.width;
           const planeHeight = planeWidth * aspect;
 
           plane.setAttribute('width',  planeWidth);
@@ -227,22 +234,22 @@
         buildScrollLines: function () {
           const marker = this.el;
           const baseStartY = -1.0;  // 1行目が出てくる位置
-          const gap       = 0.22;   // 下に並べる間隔（値をいじると行間が変わる）
-          const speed     = 0.22;   // 上方向の速度（約10秒で画面を通過）
+          const gap       = 0.22;   // 下に並べる間隔
+          const speed     = 0.22;   // 上方向の速度
 
           for (let i = 1; i < messages.length; i++) {
             const text = messages[i];
-            const canvas = drawLineToCanvas(text);
-            if (!canvas) continue;
+            const tex = createCanvasForText(text);
+            if (!tex) continue;
 
             const plane = document.createElement('a-plane');
             plane.setAttribute(
               'material',
-              'src: #msgCanvas; transparent: true; side: double'
+              `src: #${tex.id}; transparent: true; side: double`
             );
 
             const planeWidth  = 2.2;
-            const aspect      = canvas.height / canvas.width;
+            const aspect      = tex.height / tex.width;
             const planeHeight = planeWidth * aspect;
 
             plane.setAttribute('width',  planeWidth);
@@ -272,9 +279,8 @@
       vr-mode-ui="enabled: false"
       arjs="sourceType: webcam; debugUIEnabled: false;"
     >
-      <a-assets>
-        <canvas id="msgCanvas"></canvas>
-      </a-assets>
+      <!-- ここには最初は何も入っていない。JS側で行ごとに canvas を追加する -->
+      <a-assets></a-assets>
 
       <!-- Hiro マーカー -->
       <a-marker preset="hiro" scroll-manager>
