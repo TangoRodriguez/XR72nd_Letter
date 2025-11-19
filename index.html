@@ -565,68 +565,7 @@
               root.appendChild(date);
             },
           
-            updateLayout: function () {
-              const centerIndex = this.activeIndex;
-              const offsetX     = 0.55;
-          
-              // モデルの左右配置 & スケール
-              this.entities.forEach((e, i) => {
-                const offset = i - centerIndex;
-                e.setAttribute('position', `${offset * offsetX} 0 0.15`);
-          
-                const wrapper   = e.querySelector('.progress-model');
-                if (!wrapper) return;
-                const baseScale = wrapper.dataset.baseScale || '1 1 1';
-                const factor    = i === centerIndex ? 1.25 : 0.85;
-                wrapper.setAttribute('scale', multiplyScaleString(baseScale, factor));
-          
-                const child = wrapper.firstElementChild;
-                if (child && child.tagName === 'A-BOX') {
-                  const activeColor   = child.dataset.activeColor   || '#ff9933';
-                  const inactiveColor = child.dataset.inactiveColor || '#cccccc';
-                  child.setAttribute('color', i === centerIndex ? activeColor : inactiveColor);
-                }
-              });
-          
-              // 中央アイテムのタイトル & 日付を更新
-              const item = this.items[centerIndex];
-              if (!item) return;
-          
-              if (this.titleEl) {
-                this.titleEl.setAttribute('value', item.title);
-              }
-              if (this.dateEl) {
-                this.dateEl.setAttribute('value', item.date);
-              }
-            },
-          
-            // 右スワイプ／左スワイプ用
-            next: function () {
-              if (this.items.length === 0) return;
-              this.activeIndex = Math.max(0, this.activeIndex - 1); // 右へスワイプ → 過去
-              this.updateLayout();
-            },
-          
-            prev: function () {
-              if (this.items.length === 0) return;
-              this.activeIndex = Math.min(this.items.length - 1, this.activeIndex + 1); // 左→ 最新へ
-              this.updateLayout();
-            },
-          
-            // 真ん中のオブジェクトをゆっくり回転
-            tick: function (time, dt) {
-              const centerIndex  = this.activeIndex;
-              const centerEntity = this.entities[centerIndex];
-              if (!centerEntity) return;
-              const wrapper = centerEntity.querySelector('.progress-model');
-              if (!wrapper) return;
-              const rot = wrapper.getAttribute('rotation') || {x:0, y:0, z:0};
-              rot.y += 30 * (dt / 1000);
-              wrapper.setAttribute('rotation', rot);
-            }
-          });
-          
-
+            
 
         updateLayout: function () {
           const centerIndex = this.activeIndex;
