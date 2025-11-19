@@ -2,35 +2,802 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <title>XR Letter - Minimal Test</title>
+    <title>XR Letter + Progress Showcase</title>
+
+    <!-- Zen Kurenaido -->
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Kurenaido&display=swap" rel="stylesheet">
 
     <!-- A-Frame / AR.js -->
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-    <script src="./js/aframe-ar.js"></script>
+    <script src="./js/aframe-ar.js?v=1.0.2"></script>
+
+    <!-- キャッシュ対策 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
 
     <style>
       body {
         margin: 0;
         overflow: hidden;
       }
+      .overlay {
+        position: fixed;
+        z-index: 20;
+        top: 0;
+        left: 0;
+        width: 100%;
+        pointer-events: none; /* 中身だけクリック可能にする */
+        font-family: 'Zen Kurenaido', system-ui, sans-serif;
+      }
+      .menu-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        color: #ffffff;
+        pointer-events: auto;
+      }
+      .hamburger {
+        width: 28px;
+        height: 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        cursor: pointer;
+      }
+      .hamburger span {
+        display: block;
+        height: 3px;
+        background: #ffffff;
+        border-radius: 999px;
+      }
+      .menu-title {
+        font-size: 14px;
+      }
+
+      .menu-panel {
+        position: absolute;
+        top: 40px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.75);
+        color: #ffffff;
+        padding: 8px 4px;
+        border-radius: 8px;
+        min-width: 120px;
+        display: none;
+        pointer-events: auto;
+      }
+      .menu-item {
+        padding: 6px 10px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .menu-item:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .menu-item.active {
+        background: rgba(255, 255, 255, 0.20);
+      }
+
+      /* 下部に現在モード表示（任意） */
+      .mode-indicator {
+        position: absolute;
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        background: rgba(0, 0, 0, 0.4);
+        color: #ffffff;
+        pointer-events: none;
+      }
+
+      /* スワイプ検出用。全面透明レイヤー */
+      #touchLayer {
+        position: fixed;
+        z-index: 10;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+        background: transparent;
+      }
     </style>
+
+    <script>
+      /********************************************
+       * 進捗データ（★ここを編集するだけで追加できる）
+       ********************************************/
+      const PROGRESS_ITEMS = [
+        // 例1：テスト用オブジェクト（今は3Dモデルの代わりにBOXを使う）
+        {
+          id: 'p1',
+          modelPath: './models/sample1.glb', // glb/gltf を指定 → <a-gltf-model>
+          title: 'XR手紙のベース実装',
+          date: '2025-11-19'
+        },
+        {
+          id: 'p2',
+          modelPath: './models/sample2.glb',
+          title: 'エンドロール演出追加',
+          date: '2025-11-20'
+        },
+        {
+          id: 'p3',
+          modelPath: './models/prism.obj', // obj を指定 → <a-obj-model>
+          mtlPath: './models/prism.mtl',    // OBJ 用のマテリアル（任意）
+          title: 'プリズムオブジェクト配置',
+          date: '2025-11-21',
+          scale: '0.25 0.25 0.25'           // モデル個別の基準スケール（任意）
+        }
+        // ここに {id, modelPath, title, date} を足すだけでショーケースに追加される
+      ];
+
+      /********************************************
+       * 進捗モデル生成用ユーティリティ
+       ********************************************/
+      function parseScaleString(scaleStr) {
+        if (!scaleStr || typeof scaleStr !== 'string') {
+          return [1, 1, 1];
+        }
+        const parts = scaleStr.trim().split(/\s+/).map((val) => {
+          const num = parseFloat(val);
+          return Number.isFinite(num) ? num : 1;
+        });
+        while (parts.length < 3) {
+          parts.push(1);
+        }
+        return parts.slice(0, 3);
+      }
+
+      function scaleArrayToString(arr) {
+        return arr.slice(0, 3).map((val) => Number(val.toFixed(4))).join(' ');
+      }
+
+      function multiplyScaleString(baseScale, factor) {
+        const parsed = parseScaleString(baseScale);
+        const scaled = parsed.map((val) => val * factor);
+        return scaleArrayToString(scaled);
+      }
+
+      function createProgressModelWrapper(item) {
+        const wrapper = document.createElement('a-entity');
+        wrapper.classList.add('progress-model');
+        wrapper.setAttribute('position', '0 0.35 0');
+
+        const baseScale = item.scale || '0.35 0.35 0.35';
+        const normalizedScale = scaleArrayToString(parseScaleString(baseScale));
+        wrapper.dataset.baseScale = normalizedScale;
+        wrapper.setAttribute('scale', normalizedScale);
+
+        const modelEl = createModelElement(item);
+        wrapper.appendChild(modelEl);
+        return wrapper;
+      }
+
+      function createModelElement(item) {
+        const path = item.modelPath || '';
+        const ext = path.split('.').pop().toLowerCase();
+        let modelEl;
+
+        if (ext === 'glb' || ext === 'gltf') {
+          modelEl = document.createElement('a-gltf-model');
+          modelEl.setAttribute('src', path);
+        } else if (ext === 'obj' || ext === 'fbx') {
+          modelEl = document.createElement('a-obj-model');
+          modelEl.setAttribute('src', path);
+          if (item.mtlPath) {
+            modelEl.setAttribute('mtl', item.mtlPath);
+          }
+        } else {
+          // フォールバック：BOX
+          modelEl = document.createElement('a-box');
+          modelEl.setAttribute('depth', '0.3');
+          modelEl.setAttribute('height', '0.3');
+          modelEl.setAttribute('width', '0.3');
+          modelEl.dataset.activeColor = '#ff9933';
+          modelEl.dataset.inactiveColor = '#cccccc';
+          modelEl.setAttribute('color', modelEl.dataset.inactiveColor);
+        }
+
+        modelEl.setAttribute('shadow', 'cast: true; receive: false');
+        return modelEl;
+      }
+
+      /********************************************
+       * グローバル状態：モード切り替え
+       ********************************************/
+      let currentMode = 'letter'; // 'letter' or 'progress'
+
+      function setMode(mode) {
+        currentMode = mode;
+        updateModeVisibility();
+      }
+
+      function updateModeVisibility() {
+        const letterRoot   = document.getElementById('letterRoot');
+        const progressRoot = document.getElementById('progressRoot');
+        const indicator    = document.getElementById('modeIndicator');
+        const menuItems    = document.querySelectorAll('.menu-item');
+
+        if (letterRoot) {
+          letterRoot.setAttribute('visible', currentMode === 'letter');
+        }
+        if (progressRoot) {
+          progressRoot.setAttribute('visible', currentMode === 'progress');
+        }
+        if (indicator) {
+          indicator.textContent =
+            currentMode === 'letter' ? 'モード：手紙' : 'モード：進捗';
+        }
+        menuItems.forEach(item => {
+          const mode = item.getAttribute('data-mode');
+          item.classList.toggle('active', mode === currentMode);
+        });
+      }
+
+      /********************************************
+       * 手紙エンドロール用ロジック（前のをコンパクトに再構成）
+       ********************************************/
+      const firstLineText = '塩田さんへ';
+
+      const scrollLines = [
+        '同じ学科の後輩として、',
+        '同じ班の後輩として、',
+        'いつも活動できたことが嬉しかったです。',
+        '',
+        '塩田さんは、',
+        '僕にとって憧れの人です。',
+        '明るさにも、優しさにも、',
+        '全てに惹かれています。',
+        '',
+        '塩田さんがXR班をつくったことで、',
+        '僕はXRという世界に出会いました。',
+        'XRに触れた日から、',
+        '視界が一気に広がりました。',
+        '',
+        '今回の理工展で企画を担当できたのも、',
+        '塩田さんがいたからです。',
+        '',
+        '来期は、もっと面白いものを作ります。',
+        '胸を張って見せられるものを作ります。',
+        '',
+        'このAR手紙には、',
+        'これからの僕の進捗を、',
+        '3Dオブジェクトで追加していこうと思っています。',
+        '',
+        'よかったら、また覗きに来てください。',
+        'その時、少しでも成長した僕を',
+        '見せられますように。',
+        '',
+        '', '', '' // 最後を空白で間を空ける
+      ];
+
+      const finalBlockLines = [
+        '本当にありがとうございました。',
+        '齋藤旦伍より'
+      ];
+
+      const WINDOW_MIN_Y = -0.6;
+      const WINDOW_MAX_Y =  0.6;
+      const SCROLL_SPEED = 0.18;
+      const BASE_START_Y = -1.0;
+      const LINE_GAP     = 0.22;
+
+      let firstDone = false;
+      let canvasIdCounter = 0;
+
+      function createCanvasForText(text) {
+        const assets = document.querySelector('a-assets');
+        if (!assets) return null;
+
+        const id = `msgCanvas_${canvasIdCounter++}`;
+        const canvas = document.createElement('canvas');
+        canvas.id = id;
+
+        const width  = 2048;
+        const height = 256;
+        canvas.width  = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, width, height);
+
+        ctx.font = "80px 'Zen Kurenaido', sans-serif";
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        if (text.trim() !== '') {
+          ctx.fillText(text, width / 2, height / 2);
+        }
+
+        assets.appendChild(canvas);
+        return { id, width, height };
+      }
+
+      AFRAME.registerComponent('firstline', {
+        schema: {
+          fadeIn:  { type: 'number', default: 1.0 },
+          hold:    { type: 'number', default: 3.0 },
+          fadeOut: { type: 'number', default: 1.0 }
+        },
+        init: function () {
+          this.startTime = null;
+        },
+        tick: function (time, dt) {
+          const el   = this.el;
+          const data = this.data;
+
+          if (this.startTime === null) {
+            this.startTime = time;
+          }
+
+          const t = (time - this.startTime) / 1000;
+          const total = data.fadeIn + data.hold + data.fadeOut;
+          let alpha = 0;
+
+          if (t < data.fadeIn) {
+            alpha = t / data.fadeIn;
+          } else if (t < data.fadeIn + data.hold) {
+            alpha = 1;
+          } else if (t < total) {
+            const t2 = t - (data.fadeIn + data.hold);
+            alpha = 1 - (t2 / data.fadeOut);
+          } else {
+            alpha = 0;
+            if (el.parentNode) {
+              el.parentNode.removeChild(el);
+            }
+            firstDone = true;
+          }
+
+          el.setAttribute('material', 'transparent', true);
+          el.setAttribute('material', 'opacity', alpha);
+        }
+      });
+
+      AFRAME.registerComponent('scrollline', {
+        schema: {
+          speed:  { type: 'number', default: SCROLL_SPEED },
+          startY: { type: 'number', default: BASE_START_Y },
+          endY:   { type: 'number', default: 1.4 }
+        },
+        init: function () {
+          const el   = this.el;
+          const data = this.data;
+          const pos  = el.getAttribute('position') || {x: 0, y: 0, z: 0};
+          pos.y = data.startY;
+          el.setAttribute('position', pos);
+        },
+        tick: function (time, dt) {
+          const el   = this.el;
+          const data = this.data;
+          const deltaSec = dt / 1000;
+          const pos = el.getAttribute('position');
+          pos.y += data.speed * deltaSec;
+          el.setAttribute('position', pos);
+
+          const y = pos.y;
+
+          if (y < WINDOW_MIN_Y || y > WINDOW_MAX_Y) {
+            el.setAttribute('material', 'transparent', true);
+            el.setAttribute('material', 'opacity', 0.0);
+          } else {
+            el.setAttribute('material', 'transparent', true);
+            el.setAttribute('material', 'opacity', 1.0);
+          }
+
+          if (y > data.endY) {
+            if (el.parentNode) {
+              el.parentNode.removeChild(el);
+            }
+          }
+        }
+      });
+
+      AFRAME.registerComponent('finalblock', {
+        schema: {
+          fadeIn:  { type: 'number', default: 1.0 },
+          hold:    { type: 'number', default: 3.0 },
+          fadeOut: { type: 'number', default: 1.5 }
+        },
+        init: function () {
+          this.startTime = null;
+        },
+        tick: function (time, dt) {
+          const el   = this.el;
+          const data = this.data;
+          if (this.startTime === null) {
+            this.startTime = time;
+          }
+
+          const t = (time - this.startTime) / 1000;
+          const total = data.fadeIn + data.hold + data.fadeOut;
+          let alpha = 0;
+
+          if (t < data.fadeIn) {
+            alpha = t / data.fadeIn;
+          } else if (t < data.fadeIn + data.hold) {
+            alpha = 1;
+          } else if (t < total) {
+            const t2 = t - (data.fadeIn + data.hold);
+            alpha = 1 - (t2 / data.fadeOut);
+          } else {
+            alpha = 0;
+            if (el.parentNode) {
+              el.parentNode.removeChild(el);
+            }
+          }
+
+          el.setAttribute('material', 'transparent', true);
+          el.setAttribute('material', 'opacity', alpha);
+        }
+      });
+
+      AFRAME.registerComponent('scroll-manager', {
+        init: function () {
+          this.scrollBuilt = false;
+          this.finalScheduled = false;
+
+          const letterRoot = document.getElementById('letterRoot');
+          if (!letterRoot) return;
+
+          const tex = createCanvasForText(firstLineText);
+          if (!tex) return;
+
+          const plane = document.createElement('a-plane');
+          plane.setAttribute(
+            'material',
+            `src: #${tex.id}; transparent: true; side: double`
+          );
+
+          const planeWidth  = 2.2;
+          const aspect      = tex.height / tex.width;
+          const planeHeight = planeWidth * aspect;
+
+          plane.setAttribute('width',  planeWidth);
+          plane.setAttribute('height', planeHeight);
+          plane.setAttribute('position', '0 0 0.12');
+          plane.setAttribute('rotation', '0 0 0');
+          plane.setAttribute('firstline', 'fadeIn: 1.0; hold: 3.0; fadeOut: 1.0');
+
+          letterRoot.appendChild(plane);
+        },
+
+        tick: function (time, dt) {
+          if (!firstDone) return;
+          if (!this.scrollBuilt) {
+            this.buildScrollLines();
+            this.scrollBuilt = true;
+          }
+          if (this.scrollBuilt && !this.finalScheduled) {
+            this.scheduleFinalBlock();
+            this.finalScheduled = true;
+          }
+        },
+
+        buildScrollLines: function () {
+          const letterRoot = document.getElementById('letterRoot');
+          if (!letterRoot) return;
+
+          for (let i = 0; i < scrollLines.length; i++) {
+            const text = scrollLines[i];
+            const tex = createCanvasForText(text);
+            if (!tex) continue;
+
+            const plane = document.createElement('a-plane');
+            plane.setAttribute(
+              'material',
+              `src: #${tex.id}; transparent: true; side: double`
+            );
+
+            const planeWidth  = 2.2;
+            const aspect      = tex.height / tex.width;
+            const planeHeight = planeWidth * aspect;
+
+            plane.setAttribute('width',  planeWidth);
+            plane.setAttribute('height', planeHeight);
+            plane.setAttribute('position', `0 0 0.12`);
+            plane.setAttribute('rotation', '0 0 0');
+
+            const startY = BASE_START_Y - i * LINE_GAP;
+            plane.setAttribute(
+              'scrollline',
+              `speed: ${SCROLL_SPEED}; startY: ${startY}; endY: 1.4`
+            );
+
+            letterRoot.appendChild(plane);
+          }
+        },
+
+        scheduleFinalBlock: function () {
+          const lastIndex  = scrollLines.length - 1;
+          const lastStartY = BASE_START_Y - lastIndex * LINE_GAP;
+          const dist       = WINDOW_MAX_Y - lastStartY;
+          const scrollTime = dist / SCROLL_SPEED;
+          const margin     = 2.0;
+          const delayMs    = (scrollTime + margin) * 1000;
+
+          setTimeout(() => {
+            const assets = document.querySelector('a-assets');
+            const letterRoot = document.getElementById('letterRoot');
+            if (!assets || !letterRoot) return;
+
+            const id = 'finalCanvas';
+            const canvas = document.createElement('canvas');
+            canvas.id = id;
+            const width  = 2048;
+            const height = 512;
+            canvas.width  = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, width, height);
+            ctx.font = "80px 'Zen Kurenaido', sans-serif";
+            ctx.fillStyle = '#000000';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const line1 = finalBlockLines[0];
+            const line2 = finalBlockLines[1];
+            ctx.fillText(line1, width / 2, height / 2 - 60);
+            ctx.fillText(line2, width / 2, height / 2 + 60);
+
+            assets.appendChild(canvas);
+
+            const plane = document.createElement('a-plane');
+            plane.setAttribute(
+              'material',
+              `src: #${id}; transparent: true; side: double`
+            );
+
+            const planeWidth  = 2.2;
+            const aspect      = height / width;
+            const planeHeight = planeWidth * aspect;
+
+            plane.setAttribute('width',  planeWidth);
+            plane.setAttribute('height', planeHeight);
+            plane.setAttribute('position', '0 0 0.13');
+            plane.setAttribute('rotation', '0 0 0');
+            plane.setAttribute('finalblock', 'fadeIn: 1.0; hold: 3.0; fadeOut: 1.5');
+
+            letterRoot.appendChild(plane);
+          }, delayMs);
+        }
+      });
+
+      /********************************************
+       * 進捗ショーケース用コンポーネント
+       ********************************************/
+      AFRAME.registerComponent('progress-showcase', {
+        init: function () {
+          this.items = PROGRESS_ITEMS;
+          this.entities = [];
+          this.activeIndex = this.items.length - 1; // ★最新（配列の最後）を中央に
+
+          this.buildShowcase();
+          this.updateLayout();
+        },
+
+        buildShowcase: function () {
+          const root = this.el;
+
+          // 3Dオブジェクト：modelPath の拡張子に応じて生成
+          this.items.forEach((item) => {
+            const e = document.createElement('a-entity');
+            const wrapper = createProgressModelWrapper(item);
+            e.appendChild(wrapper);
+            root.appendChild(e);
+            this.entities.push(e);
+          });
+
+          // タイトル・日付のテキスト
+          const title = document.createElement('a-text');
+          title.setAttribute('id', 'progressTitle');
+          title.setAttribute('value', '');
+          title.setAttribute('color', '#000000');
+          title.setAttribute('align', 'center');
+          title.setAttribute('width', '2.4');
+          title.setAttribute('position', '0 -0.15 0.15');
+          this.titleEl = title;
+          root.appendChild(title);
+
+          const date = document.createElement('a-text');
+          date.setAttribute('id', 'progressDate');
+          date.setAttribute('value', '');
+          date.setAttribute('color', '#333333');
+          date.setAttribute('align', 'center');
+          date.setAttribute('width', '2.4');
+          date.setAttribute('position', '0 -0.32 0.15');
+          this.dateEl = date;
+          root.appendChild(date);
+        },
+
+        updateLayout: function () {
+          const centerIndex = this.activeIndex;
+          const offsetX = 0.55;
+
+          this.entities.forEach((e, i) => {
+            const offset = i - centerIndex;
+            e.setAttribute('position', `${offset * offsetX} 0 0.15`);
+
+            const wrapper = e.querySelector('.progress-model');
+            if (wrapper) {
+              const baseScale = wrapper.dataset.baseScale || '1 1 1';
+              const factor = i === centerIndex ? 1.25 : 0.85;
+              wrapper.setAttribute('scale', multiplyScaleString(baseScale, factor));
+
+              const child = wrapper.firstElementChild;
+              if (child && child.tagName === 'A-BOX') {
+                const activeColor = child.dataset.activeColor || '#ff9933';
+                const inactiveColor = child.dataset.inactiveColor || '#cccccc';
+                child.setAttribute('color', i === centerIndex ? activeColor : inactiveColor);
+              }
+            }
+          });
+
+          const item = this.items[centerIndex];
+          if (this.titleEl && this.dateEl && item) {
+            this.titleEl.setAttribute('value', item.title);
+            this.dateEl.setAttribute('value', item.date);
+          }
+        },
+
+        next: function () {
+          if (this.items.length === 0) return;
+          this.activeIndex = Math.max(0, this.activeIndex - 1); // 右→左（過去へ）
+          this.updateLayout();
+        },
+
+        prev: function () {
+          if (this.items.length === 0) return;
+          this.activeIndex = Math.min(this.items.length - 1, this.activeIndex + 1); // 左→右（未来側＝最新へ）
+          this.updateLayout();
+        },
+
+        tick: function (time, dt) {
+          // 中央のオブジェクトだけゆっくり回転
+          const centerIndex = this.activeIndex;
+          const centerEntity = this.entities[centerIndex];
+          if (!centerEntity) return;
+
+          const wrapper = centerEntity.querySelector('.progress-model');
+          if (!wrapper) return;
+
+          const rot = wrapper.getAttribute('rotation') || {x: 0, y: 0, z: 0};
+          rot.y += 30 * (dt / 1000); // 1秒で30度回転
+          wrapper.setAttribute('rotation', rot);
+        }
+      });
+
+      /********************************************
+       * DOM準備：メニューとスワイプ
+       ********************************************/
+      document.addEventListener('DOMContentLoaded', function () {
+        // ハンバーガーメニュー
+        const btn = document.getElementById('menuButton');
+        const panel = document.getElementById('menuPanel');
+        const modeIndicator = document.getElementById('modeIndicator');
+
+        if (btn && panel) {
+          btn.addEventListener('click', () => {
+            const visible = panel.style.display === 'block';
+            panel.style.display = visible ? 'none' : 'block';
+          });
+
+          panel.addEventListener('click', (e) => {
+            const item = e.target.closest('.menu-item');
+            if (!item) return;
+            const mode = item.getAttribute('data-mode');
+            setMode(mode);
+            panel.style.display = 'none';
+          });
+        }
+
+        // 初期モード
+        updateModeVisibility();
+
+        // スワイプ検出（進捗モードのときだけ）
+        const touchLayer = document.getElementById('touchLayer');
+        let touchStartX = null;
+
+        if (touchLayer) {
+          touchLayer.addEventListener('touchstart', (e) => {
+            if (currentMode !== 'progress') return;
+            if (e.touches.length > 0) {
+              touchStartX = e.touches[0].clientX;
+            }
+          });
+
+          touchLayer.addEventListener('touchend', (e) => {
+            if (currentMode !== 'progress') return;
+            if (touchStartX === null) return;
+            if (e.changedTouches.length === 0) return;
+
+            const endX = e.changedTouches[0].clientX;
+            const dx = endX - touchStartX;
+
+            const threshold = 40;
+            if (Math.abs(dx) > threshold) {
+              const sceneEl = document.querySelector('[progress-showcase]');
+              if (!sceneEl) return;
+              const comp = sceneEl.components['progress-showcase'];
+              if (!comp) return;
+
+              if (dx < 0) {
+                comp.next();  // 左スワイプ → 過去へ
+              } else {
+                comp.prev();  // 右スワイプ → 最新側へ
+              }
+            }
+            touchStartX = null;
+          });
+        }
+      });
+    </script>
   </head>
 
   <body>
+    <!-- UIオーバーレイ -->
+    <div class="overlay">
+      <div class="menu-bar">
+        <div class="hamburger" id="menuButton">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="menu-title">XR Letter Menu</div>
+      </div>
+      <div class="menu-panel" id="menuPanel">
+        <div class="menu-item active" data-mode="letter">手紙</div>
+        <div class="menu-item" data-mode="progress">進捗</div>
+      </div>
+
+      <div class="mode-indicator" id="modeIndicator">モード：手紙</div>
+    </div>
+
+    <!-- スワイプ検出レイヤー -->
+    <div id="touchLayer"></div>
+
+    <!-- ARシーン -->
     <a-scene
       embedded
       renderer="antialias: true; alpha: true"
       vr-mode-ui="enabled: false"
       arjs="sourceType: webcam; debugUIEnabled: false;"
     >
-      <a-marker preset="hiro">
-        <!-- ★ でかい青い板だけ表示するテスト ★ -->
-        <a-plane
-          color="#0000ff"
-          height="2"
-          width="2"
-          position="0 1 0"
-        ></a-plane>
+      <!-- 行ごとに canvas を JSから追加していく -->
+      <a-assets></a-assets>
+
+      <!-- 共通マーカー（今は hiro）。ここを画像マーカーに変えるのは後でやればOK -->
+      <a-marker preset="hiro" scroll-manager>
+        <!-- 手紙ウィンドウ -->
+        <a-entity id="letterRoot">
+          <!-- 手紙用 白背景 -->
+          <a-plane
+            color="#ffffff"
+            width="2.4"
+            height="1.6"
+            position="0 0 0.1"
+            rotation="0 0 0"
+            opacity="0.97"
+          ></a-plane>
+        </a-entity>
+
+        <!-- 進捗ウィンドウ（最初は非表示） -->
+        <a-entity id="progressRoot" progress-showcase visible="false">
+          <!-- ショーケース用の白背景 -->
+          <a-plane
+            color="#ffffff"
+            width="2.4"
+            height="1.6"
+            position="0 0 0.1"
+            rotation="0 0 0"
+            opacity="0.97"
+          ></a-plane>
+        </a-entity>
       </a-marker>
 
       <a-entity camera></a-entity>
