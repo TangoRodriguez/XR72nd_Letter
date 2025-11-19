@@ -518,52 +518,114 @@
        * 進捗ショーケース
        ********************************************/
       AFRAME.registerComponent('progress-showcase', {
-        init: function () {
-          this.items       = PROGRESS_ITEMS;
-          this.entities    = [];
-          this.activeIndex = this.items.length - 1;
-
-          this.buildShowcase();
-          this.updateLayout();
-        },
-
-       buildShowcase: function () {
-          const root = this.el;
-        
-          // 3Dオブジェクト：modelPath ごとに生成
-          this.items.forEach((item) => {
-            const e       = document.createElement('a-entity');
-            const wrapper = createProgressModelWrapper(item);
-            e.appendChild(wrapper);
-            root.appendChild(e);
-            this.entities.push(e);
+            init: function () {
+              // データと状態
+              this.items       = PROGRESS_ITEMS;
+              this.entities    = [];
+              this.activeIndex = this.items.length - 1; // 最新をセンター
+          
+              // 3Dモデル + タイトル + 日付をまとめて作る
+              this.buildShowcase();
+              // 配置＆テキスト更新
+              this.updateLayout();
+            },
+          
+            buildShowcase: function () {
+              const root = this.el;
+          
+              // ---------- 3Dオブジェクト（今まで通り） ----------
+              this.items.forEach((item) => {
+                const e       = document.createElement('a-entity');
+                const wrapper = createProgressModelWrapper(item); // 中身に model を入れる
+                e.appendChild(wrapper);
+                root.appendChild(e);
+                this.entities.push(e);
+              });
+          
+              // ---------- タイトル（下側の平面テキスト） ----------
+              const title = document.createElement('a-text');
+              title.setAttribute('id', 'progressTitle');
+              title.setAttribute('value', '');              // 後で updateLayout でセット
+              title.setAttribute('color', '#222222');
+              title.setAttribute('align', 'center');
+              title.setAttribute('width', '2.4');
+              title.setAttribute('position', '0 -0.25 0.15'); // モデルのちょい下
+              this.titleEl = title;
+              root.appendChild(title);
+          
+              // ---------- 日付（上側の平面テキスト） ----------
+              const date = document.createElement('a-text');
+              date.setAttribute('id', 'progressDate');
+              date.setAttribute('value', '');              // 後で updateLayout でセット
+              date.setAttribute('color', '#333333');
+              date.setAttribute('align', 'center');
+              date.setAttribute('width', '2.4');
+              date.setAttribute('position', '0 0.75 0.15'); // モデルのちょい上
+              this.dateEl = date;
+              root.appendChild(date);
+            },
+          
+            updateLayout: function () {
+              const centerIndex = this.activeIndex;
+              const offsetX     = 0.55;
+          
+              // モデルの左右配置 & スケール
+              this.entities.forEach((e, i) => {
+                const offset = i - centerIndex;
+                e.setAttribute('position', `${offset * offsetX} 0 0.15`);
+          
+                const wrapper   = e.querySelector('.progress-model');
+                if (!wrapper) return;
+                const baseScale = wrapper.dataset.baseScale || '1 1 1';
+                const factor    = i === centerIndex ? 1.25 : 0.85;
+                wrapper.setAttribute('scale', multiplyScaleString(baseScale, factor));
+          
+                const child = wrapper.firstElementChild;
+                if (child && child.tagName === 'A-BOX') {
+                  const activeColor   = child.dataset.activeColor   || '#ff9933';
+                  const inactiveColor = child.dataset.inactiveColor || '#cccccc';
+                  child.setAttribute('color', i === centerIndex ? activeColor : inactiveColor);
+                }
+              });
+          
+              // 中央アイテムのタイトル & 日付を更新
+              const item = this.items[centerIndex];
+              if (!item) return;
+          
+              if (this.titleEl) {
+                this.titleEl.setAttribute('value', item.title);
+              }
+              if (this.dateEl) {
+                this.dateEl.setAttribute('value', item.date);
+              }
+            },
+          
+            // 右スワイプ／左スワイプ用
+            next: function () {
+              if (this.items.length === 0) return;
+              this.activeIndex = Math.max(0, this.activeIndex - 1); // 右へスワイプ → 過去
+              this.updateLayout();
+            },
+          
+            prev: function () {
+              if (this.items.length === 0) return;
+              this.activeIndex = Math.min(this.items.length - 1, this.activeIndex + 1); // 左→ 最新へ
+              this.updateLayout();
+            },
+          
+            // 真ん中のオブジェクトをゆっくり回転
+            tick: function (time, dt) {
+              const centerIndex  = this.activeIndex;
+              const centerEntity = this.entities[centerIndex];
+              if (!centerEntity) return;
+              const wrapper = centerEntity.querySelector('.progress-model');
+              if (!wrapper) return;
+              const rot = wrapper.getAttribute('rotation') || {x:0, y:0, z:0};
+              rot.y += 30 * (dt / 1000);
+              wrapper.setAttribute('rotation', rot);
+            }
           });
-        
-          // ▼ タイトル（下側・平面テキストのまま）
-          const title = document.createElement('a-text');
-          title.setAttribute('id', 'progressTitle');
-          title.setAttribute('value', '');
-          title.setAttribute('color', '#000000');
-          title.setAttribute('align', 'center');
-          title.setAttribute('width', '2.4');
-          title.setAttribute('position', '0 -0.15 0.15');
-          this.titleEl = title;
-          root.appendChild(title);
-        
-          // ▼ 日付（上側・立体文字）
-          const date3D = document.createElement('a-entity');
-          // オブジェクトの少し上あたり（必要に応じて y を微調整）
-          date3D.setAttribute('position', '0 0.9 0.15');
-          date3D.setAttribute('rotation', '0 0 0');
-          date3D.setAttribute(
-            'text-geometry',
-            'value: ; size: 0.18; height: 0.05; bevelEnabled: true; bevelSize: 0.005; bevelThickness: 0.005'
-          });
-          date3D.setAttribute('material', 'color: #333333; metalness: 0.2; roughness: 0.8;');
-        
-          this.dateEl3D = date3D;
-          root.appendChild(date3D);
-        },
+          
 
 
         updateLayout: function () {
