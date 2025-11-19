@@ -11,6 +11,10 @@
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
     <script src="./js/aframe-ar.js?v=1.0.2"></script>
 
+
+    <!-- ★ 3D 文字表示用 text-geometry コンポーネント -->
+    <script src="https://unpkg.com/aframe-text-geometry-component@^0.6.0/dist/aframe-text-geometry-component.min.js"></script>
+    
     <!-- キャッシュ対策 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
@@ -523,17 +527,19 @@
           this.updateLayout();
         },
 
-        buildShowcase: function () {
+       buildShowcase: function () {
           const root = this.el;
-
-          this.items.forEach(item => {
+        
+          // 3Dオブジェクト：modelPath ごとに生成
+          this.items.forEach((item) => {
             const e       = document.createElement('a-entity');
             const wrapper = createProgressModelWrapper(item);
             e.appendChild(wrapper);
             root.appendChild(e);
             this.entities.push(e);
           });
-
+        
+          // ▼ タイトル（下側・平面テキストのまま）
           const title = document.createElement('a-text');
           title.setAttribute('id', 'progressTitle');
           title.setAttribute('value', '');
@@ -543,17 +549,26 @@
           title.setAttribute('position', '0 -0.15 0.15');
           this.titleEl = title;
           root.appendChild(title);
-
-          const date = document.createElement('a-text');
-          date.setAttribute('id', 'progressDate');
-          date.setAttribute('value', '');
-          date.setAttribute('color', '#333333');
-          date.setAttribute('align', 'center');
-          date.setAttribute('width', '2.4');
-          date.setAttribute('position', '0 -0.32 0.15');
-          this.dateEl = date;
-          root.appendChild(date);
+        
+          // ▼ 日付（上側・立体文字）
+          const date3D = document.createElement('a-entity');
+          // オブジェクトの少し上あたり（必要に応じて y を微調整）
+          date3D.setAttribute('position', '0 0.9 0.15');
+          date3D.setAttribute('rotation', '0 0 0');
+          date3D.setAttribute('text-geometry', {
+            value: '',
+            size: 0.18,     // 文字サイズ
+            height: 0.05,   // 奥行き
+            bevelEnabled: true,
+            bevelSize: 0.005,
+            bevelThickness: 0.005
+          });
+          date3D.setAttribute('material', 'color: #333333; metalness: 0.2; roughness: 0.8;');
+        
+          this.dateEl3D = date3D;
+          root.appendChild(date3D);
         },
+
 
         updateLayout: function () {
           const centerIndex = this.activeIndex;
@@ -717,14 +732,7 @@
 
         <!-- 進捗ウィンドウ（最初は非表示） -->
         <a-entity id="progressRoot" progress-showcase visible="false">
-          <a-plane
-            color="#ffffff"
-            width="2.4"
-            height="1.6"
-            position="0 0 0.1"
-            rotation="0 0 0"
-            opacity="0.97">
-          </a-plane>
+          
         </a-entity>
       </a-marker>
 
