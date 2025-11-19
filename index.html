@@ -215,6 +215,12 @@
       function setMode(mode) {
         currentMode = mode;
         updateModeVisibility();
+         // ★確実に反映させるための強制再描画
+        const letterRoot   = document.getElementById('letterRoot');
+        const progressRoot = document.getElementById('progressRoot');
+        if (letterRoot && progressRoot) {
+          letterRoot.object3D.visible   = (currentMode === 'letter');
+          progressRoot.object3D.visible = (currentMode === 'progress');
       }
 
       function updateModeVisibility() {
