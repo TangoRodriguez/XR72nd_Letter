@@ -555,13 +555,9 @@
           // オブジェクトの少し上あたり（必要に応じて y を微調整）
           date3D.setAttribute('position', '0 0.9 0.15');
           date3D.setAttribute('rotation', '0 0 0');
-          date3D.setAttribute('text-geometry', {
-            value: '',
-            size: 0.18,     // 文字サイズ
-            height: 0.05,   // 奥行き
-            bevelEnabled: true,
-            bevelSize: 0.005,
-            bevelThickness: 0.005
+          date3D.setAttribute(
+            'text-geometry',
+            'value: ; size: 0.18; height: 0.05; bevelEnabled: true; bevelSize: 0.005; bevelThickness: 0.005'
           });
           date3D.setAttribute('material', 'color: #333333; metalness: 0.2; roughness: 0.8;');
         
