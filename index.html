@@ -211,39 +211,76 @@
        * グローバル状態：モード切り替え
        ********************************************/
       let currentMode = 'letter'; // 'letter' or 'progress'
-
+      let letterRoot = null;
+      let progressRoot = null;
+      
       function setMode(mode) {
         currentMode = mode;
         updateModeVisibility();
-         // ★確実に反映させるための強制再描画
-        const letterRoot   = document.getElementById('letterRoot');
-        const progressRoot = document.getElementById('progressRoot');
-        if (letterRoot && progressRoot) {
-          letterRoot.object3D.visible   = (currentMode === 'letter');
-          progressRoot.object3D.visible = (currentMode === 'progress');
+      
+        // ★強制反映（最重要）
+        if (letterRoot) letterRoot.object3D.visible   = (currentMode === 'letter');
+        if (progressRoot) progressRoot.object3D.visible = (currentMode === 'progress');
       }
-
+      
       function updateModeVisibility() {
-        const letterRoot   = document.getElementById('letterRoot');
-        const progressRoot = document.getElementById('progressRoot');
         const indicator    = document.getElementById('modeIndicator');
         const menuItems    = document.querySelectorAll('.menu-item');
-
-        if (letterRoot) {
-          letterRoot.setAttribute('visible', currentMode === 'letter');
-        }
-        if (progressRoot) {
-          progressRoot.setAttribute('visible', currentMode === 'progress');
-        }
+      
+        if (letterRoot)   letterRoot.setAttribute('visible', currentMode === 'letter');
+        if (progressRoot) progressRoot.setAttribute('visible', currentMode === 'progress');
+      
         if (indicator) {
           indicator.textContent =
             currentMode === 'letter' ? 'モード：手紙' : 'モード：進捗';
         }
+      
         menuItems.forEach(item => {
           const mode = item.getAttribute('data-mode');
           item.classList.toggle('active', mode === currentMode);
         });
       }
+      
+      // DOM 初期化
+      document.addEventListener('DOMContentLoaded', () => {
+        letterRoot   = document.getElementById('letterRoot');
+        progressRoot = document.getElementById('progressRoot');
+      
+        updateModeVisibility();
+      
+        // ハンバーガーメニュー
+        const btn = document.getElementById('menuButton');
+        const panel = document.getElementById('menuPanel');
+        btn.addEventListener('click', () => {
+          panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        });
+        panel.addEventListener('click', (e) => {
+          const item = e.target.closest('.menu-item');
+          if (!item) return;
+          setMode(item.getAttribute('data-mode'));
+          panel.style.display = 'none';
+        });
+      
+        // スワイプ（進捗のみ）
+        const touchLayer = document.getElementById('touchLayer');
+        let startX = null;
+        touchLayer.addEventListener('touchstart', e => {
+          if (currentMode !== 'progress') return;
+          startX = e.touches[0].clientX;
+        });
+        touchLayer.addEventListener('touchend', e => {
+          if (currentMode !== 'progress' || startX === null) return;
+          const dx = e.changedTouches[0].clientX - startX;
+          const sceneEl = document.querySelector('[progress-showcase]');
+          if (!sceneEl) return;
+          const comp = sceneEl.components['progress-showcase'];
+          if (!comp) return;
+          if (dx < -40) comp.next();
+          if (dx > 40) comp.prev();
+          startX = null;
+        });
+      });
+
 
       /********************************************
        * 手紙エンドロール用ロジック（前のをコンパクトに再構成）
