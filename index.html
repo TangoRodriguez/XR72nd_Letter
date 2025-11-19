@@ -2,7 +2,7 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <title>XR Letter Loading... (Scroll Credits)</title>
+    <title>XR Letter + Progress Showcase</title>
 
     <!-- Zen Kurenaido -->
     <link href="https://fonts.googleapis.com/css2?family=Zen+Kurenaido&display=swap" rel="stylesheet">
@@ -23,71 +23,194 @@
       }
       .overlay {
         position: fixed;
-        z-index: 10;
-        top: 10px;
+        z-index: 20;
+        top: 0;
+        left: 0;
+        width: 100%;
+        pointer-events: none; /* 中身だけクリック可能にする */
+        font-family: 'Zen Kurenaido', system-ui, sans-serif;
+      }
+      .menu-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        color: #ffffff;
+        pointer-events: auto;
+      }
+      .hamburger {
+        width: 28px;
+        height: 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        cursor: pointer;
+      }
+      .hamburger span {
+        display: block;
+        height: 3px;
+        background: #ffffff;
+        border-radius: 999px;
+      }
+      .menu-title {
+        font-size: 14px;
+      }
+
+      .menu-panel {
+        position: absolute;
+        top: 40px;
         left: 10px;
-        color: white;
-        font-family: sans-serif;
+        background: rgba(0, 0, 0, 0.75);
+        color: #ffffff;
+        padding: 8px 4px;
+        border-radius: 8px;
+        min-width: 120px;
+        display: none;
+        pointer-events: auto;
+      }
+      .menu-item {
+        padding: 6px 10px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .menu-item:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .menu-item.active {
+        background: rgba(255, 255, 255, 0.20);
+      }
+
+      /* 下部に現在モード表示（任意） */
+      .mode-indicator {
+        position: absolute;
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        background: rgba(0, 0, 0, 0.4);
+        color: #ffffff;
+        pointer-events: none;
+      }
+
+      /* スワイプ検出用。全面透明レイヤー */
+      #touchLayer {
+        position: fixed;
+        z-index: 10;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+        background: transparent;
       }
     </style>
 
     <script>
-      // ===== 文章 =====
-      const firstLineText = "塩田さんへ"; // 最初に中央でフェードイン/アウトする行
+      /********************************************
+       * 進捗データ（★ここを編集するだけで追加できる）
+       ********************************************/
+      const PROGRESS_ITEMS = [
+        // 例1：テスト用オブジェクト（今は3Dモデルの代わりにBOXを使う）
+        {
+          id: 'p1',
+          modelPath: './models/sample1.glb', // 将来ここに glb/obj を置き換え
+          title: 'XR手紙のベース実装',
+          date: '2025-11-19'
+        },
+        {
+          id: 'p2',
+          modelPath: './models/sample2.glb',
+          title: 'エンドロール演出追加',
+          date: '2025-11-20'
+        }
+        // ここに {id, modelPath, title, date} を足すだけでショーケースに追加される
+      ];
 
-      // スクロールで流す部分（空行は "" を入れる）
+      /********************************************
+       * グローバル状態：モード切り替え
+       ********************************************/
+      let currentMode = 'letter'; // 'letter' or 'progress'
+
+      function setMode(mode) {
+        currentMode = mode;
+        updateModeVisibility();
+      }
+
+      function updateModeVisibility() {
+        const letterRoot   = document.getElementById('letterRoot');
+        const progressRoot = document.getElementById('progressRoot');
+        const indicator    = document.getElementById('modeIndicator');
+        const menuItems    = document.querySelectorAll('.menu-item');
+
+        if (letterRoot) {
+          letterRoot.setAttribute('visible', currentMode === 'letter');
+        }
+        if (progressRoot) {
+          progressRoot.setAttribute('visible', currentMode === 'progress');
+        }
+        if (indicator) {
+          indicator.textContent =
+            currentMode === 'letter' ? 'モード：手紙' : 'モード：進捗';
+        }
+        menuItems.forEach(item => {
+          const mode = item.getAttribute('data-mode');
+          item.classList.toggle('active', mode === currentMode);
+        });
+      }
+
+      /********************************************
+       * 手紙エンドロール用ロジック（前のをコンパクトに再構成）
+       ********************************************/
+      const firstLineText = '塩田さんへ';
+
       const scrollLines = [
-        "同じ学科の後輩として、",
-        "同じ班の後輩として、",
-        "いつも活動できたことが嬉しかったです。",
-        "",
-        "塩田さんは、",
-        "僕にとって憧れの人です。",
-        "明るさにも、優しさにも、",
-        "全てに惹かれています。",
-        "",
-        "塩田さんがXR班をつくったことで、",
-        "僕はXRという世界に出会いました。",
-        "XRに触れた日から、",
-        "視界が一気に広がりました。",
-        "",
-        "今回の理工展で企画を担当できたのも、",
-        "塩田さんがいたからです。",
-        "",
-        "来期は、もっと面白いものを作ります。",
-        "胸を張って見せられるものを作ります。",
-        "",
-        "このAR手紙には、",
-        "これからのXR班の進捗を",
-        "3Dオブジェクトで追加していこうと思っています。",
-        "",
-        "よかったら、また覗きに来てください。",
-        "その時、少しでも成長したXR班を",
-        "見せられますように。",
-        "",
-        "", "", ""   // ★ ここは最後に大きな空白を作るための空行
+        '同じ学科の後輩として、',
+        '同じ班の後輩として、',
+        'いつも活動できたことが嬉しかったです。',
+        '',
+        '塩田さんは、',
+        '僕にとって憧れの人です。',
+        '明るさにも、優しさにも、',
+        '全てに惹かれています。',
+        '',
+        '塩田さんがXR班をつくったことで、',
+        '僕はXRという世界に出会いました。',
+        'XRに触れた日から、',
+        '視界が一気に広がりました。',
+        '',
+        '今回の理工展で企画を担当できたのも、',
+        '塩田さんがいたからです。',
+        '',
+        '来期は、もっと面白いものを作ります。',
+        '胸を張って見せられるものを作ります。',
+        '',
+        'このAR手紙には、',
+        'これからの僕の進捗を、',
+        '3Dオブジェクトで追加していこうと思っています。',
+        '',
+        'よかったら、また覗きに来てください。',
+        'その時、少しでも成長した僕を',
+        '見せられますように。',
+        '',
+        '', '', '' // 最後を空白で間を空ける
       ];
 
-      // 最後に中央で止まる2行
       const finalBlockLines = [
-        "本当にありがとうございました。",
-        "齋藤旦伍より"
+        '本当にありがとうございました。',
+        '齋藤旦伍より'
       ];
 
-      // マスク用ウィンドウ（このY範囲だけ表示）
-      const WINDOW_MIN_Y = -0.7;
-      const WINDOW_MAX_Y =  0.7;
+      const WINDOW_MIN_Y = -0.6;
+      const WINDOW_MAX_Y =  0.6;
+      const SCROLL_SPEED = 0.18;
+      const BASE_START_Y = -1.0;
+      const LINE_GAP     = 0.22;
 
-      // スクロール速度など（好みで調整OK）
-      const SCROLL_SPEED = 0.18;   // 上方向のスピード（m/s）
-      const BASE_START_Y = -1.0;   // 1行目のスタート位置
-      const LINE_GAP     = 0.22;   // 行間（小さくすると行が詰まる）
+      let firstDone = false;
+      let canvasIdCounter = 0;
 
-      // 内部状態
-      let firstDone = false;      // 「塩田さんへ」が終わったか
-      let canvasIdCounter = 0;    // キャンバスID用カウンタ
-
-      // ===== 共通：1行用キャンバス作成（空行も「空白高さ」として扱う） =====
       function createCanvasForText(text) {
         const assets = document.querySelector('a-assets');
         if (!assets) return null;
@@ -105,12 +228,11 @@
         ctx.clearRect(0, 0, width, height);
 
         ctx.font = "80px 'Zen Kurenaido', sans-serif";
-        ctx.fillStyle = "#000000";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
 
-        // ★ 空行は文字を描かないが、高さは確保したいので canvas 自体は使う
-        if (text.trim() !== "") {
+        if (text.trim() !== '') {
           ctx.fillText(text, width / 2, height / 2);
         }
 
@@ -118,18 +240,15 @@
         return { id, width, height };
       }
 
-      // ===== 最初の1行：中央でフェードイン → ホールド → フェードアウト =====
       AFRAME.registerComponent('firstline', {
         schema: {
           fadeIn:  { type: 'number', default: 1.0 },
           hold:    { type: 'number', default: 3.0 },
           fadeOut: { type: 'number', default: 1.0 }
         },
-
         init: function () {
           this.startTime = null;
         },
-
         tick: function (time, dt) {
           const el   = this.el;
           const data = this.data;
@@ -154,7 +273,7 @@
             if (el.parentNode) {
               el.parentNode.removeChild(el);
             }
-            firstDone = true; // ★ ここからスクロール開始OK
+            firstDone = true;
           }
 
           el.setAttribute('material', 'transparent', true);
@@ -162,14 +281,12 @@
         }
       });
 
-      // ===== スクロール行：上に動かしつつ、白ウィンドウだけ表示 =====
       AFRAME.registerComponent('scrollline', {
         schema: {
           speed:  { type: 'number', default: SCROLL_SPEED },
           startY: { type: 'number', default: BASE_START_Y },
           endY:   { type: 'number', default: 1.4 }
         },
-
         init: function () {
           const el   = this.el;
           const data = this.data;
@@ -177,11 +294,9 @@
           pos.y = data.startY;
           el.setAttribute('position', pos);
         },
-
         tick: function (time, dt) {
           const el   = this.el;
           const data = this.data;
-
           const deltaSec = dt / 1000;
           const pos = el.getAttribute('position');
           pos.y += data.speed * deltaSec;
@@ -189,7 +304,6 @@
 
           const y = pos.y;
 
-          // マスク：白背景の範囲だけ不透明、それ以外は完全に透明
           if (y < WINDOW_MIN_Y || y > WINDOW_MAX_Y) {
             el.setAttribute('material', 'transparent', true);
             el.setAttribute('material', 'opacity', 0.0);
@@ -198,7 +312,6 @@
             el.setAttribute('material', 'opacity', 1.0);
           }
 
-          // かなり上に抜けたら削除
           if (y > data.endY) {
             if (el.parentNode) {
               el.parentNode.removeChild(el);
@@ -207,22 +320,18 @@
         }
       });
 
-      // ===== 最後の2行：中央でフェードイン → ホールド → フェードアウト =====
       AFRAME.registerComponent('finalblock', {
         schema: {
           fadeIn:  { type: 'number', default: 1.0 },
           hold:    { type: 'number', default: 3.0 },
-          fadeOut: { type: 'number', default: 1.0 }
+          fadeOut: { type: 'number', default: 1.5 }
         },
-
         init: function () {
           this.startTime = null;
         },
-
         tick: function (time, dt) {
           const el   = this.el;
           const data = this.data;
-
           if (this.startTime === null) {
             this.startTime = time;
           }
@@ -250,14 +359,14 @@
         }
       });
 
-      // ===== Manager：最初 → スクロール → 最後の2行 =====
       AFRAME.registerComponent('scroll-manager', {
         init: function () {
           this.scrollBuilt = false;
           this.finalScheduled = false;
 
-          // 1) 最初の「塩田さんへ」
-          const marker = this.el;
+          const letterRoot = document.getElementById('letterRoot');
+          if (!letterRoot) return;
+
           const tex = createCanvasForText(firstLineText);
           if (!tex) return;
 
@@ -277,22 +386,15 @@
           plane.setAttribute('rotation', '0 0 0');
           plane.setAttribute('firstline', 'fadeIn: 1.0; hold: 3.0; fadeOut: 1.0');
 
-          marker.appendChild(plane);
+          letterRoot.appendChild(plane);
         },
 
         tick: function (time, dt) {
-          const marker = this.el;
-
-          // 最初の行が終わるまで待機
           if (!firstDone) return;
-
-          // 2) スクロール行を組み立て（1回だけ）
           if (!this.scrollBuilt) {
             this.buildScrollLines();
             this.scrollBuilt = true;
           }
-
-          // 3) 最後のブロックを出すタイミングをまだセットしていなければ計算して予約
           if (this.scrollBuilt && !this.finalScheduled) {
             this.scheduleFinalBlock();
             this.finalScheduled = true;
@@ -300,7 +402,8 @@
         },
 
         buildScrollLines: function () {
-          const marker = this.el;
+          const letterRoot = document.getElementById('letterRoot');
+          if (!letterRoot) return;
 
           for (let i = 0; i < scrollLines.length; i++) {
             const text = scrollLines[i];
@@ -322,37 +425,30 @@
             plane.setAttribute('position', `0 0 0.12`);
             plane.setAttribute('rotation', '0 0 0');
 
-            // 下方向に等間隔で並べておき、一斉に上に流す
             const startY = BASE_START_Y - i * LINE_GAP;
             plane.setAttribute(
               'scrollline',
               `speed: ${SCROLL_SPEED}; startY: ${startY}; endY: 1.4`
             );
 
-            marker.appendChild(plane);
+            letterRoot.appendChild(plane);
           }
         },
 
-        // スクロールがだいたい終わった頃に最後のブロックを出す
         scheduleFinalBlock: function () {
-          const marker = this.el;
-
-          const lastIndex = scrollLines.length - 1;
+          const lastIndex  = scrollLines.length - 1;
           const lastStartY = BASE_START_Y - lastIndex * LINE_GAP;
-
-          // 「最後の行がウィンドウ上端を通過するまで」の時間をざっくり計算
-          const dist = WINDOW_MAX_Y - lastStartY;
+          const dist       = WINDOW_MAX_Y - lastStartY;
           const scrollTime = dist / SCROLL_SPEED;
-
-          const margin = -3.0; 
-          const delayMs = (scrollTime + margin) * 1000;
+          const margin     = 2.0;
+          const delayMs    = (scrollTime + margin) * 1000;
 
           setTimeout(() => {
-            // 最後の2行を1枚のキャンバスとして描画
             const assets = document.querySelector('a-assets');
-            if (!assets) return;
+            const letterRoot = document.getElementById('letterRoot');
+            if (!assets || !letterRoot) return;
 
-            const id = `finalCanvas`;
+            const id = 'finalCanvas';
             const canvas = document.createElement('canvas');
             canvas.id = id;
             const width  = 2048;
@@ -362,13 +458,11 @@
 
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, width, height);
-
             ctx.font = "80px 'Zen Kurenaido', sans-serif";
-            ctx.fillStyle = "#000000";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
+            ctx.fillStyle = '#000000';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
 
-            // 2行で中央寄せ
             const line1 = finalBlockLines[0];
             const line2 = finalBlockLines[1];
             ctx.fillText(line1, width / 2, height / 2 - 60);
@@ -388,40 +482,243 @@
 
             plane.setAttribute('width',  planeWidth);
             plane.setAttribute('height', planeHeight);
-            plane.setAttribute('position', '0 0 0.13'); // 中央
+            plane.setAttribute('position', '0 0 0.13');
             plane.setAttribute('rotation', '0 0 0');
             plane.setAttribute('finalblock', 'fadeIn: 1.0; hold: 3.0; fadeOut: 1.5');
 
-            marker.appendChild(plane);
+            letterRoot.appendChild(plane);
           }, delayMs);
+        }
+      });
+
+      /********************************************
+       * 進捗ショーケース用コンポーネント
+       ********************************************/
+      AFRAME.registerComponent('progress-showcase', {
+        init: function () {
+          this.items = PROGRESS_ITEMS;
+          this.entities = [];
+          this.activeIndex = this.items.length - 1; // ★最新（配列の最後）を中央に
+
+          this.buildShowcase();
+          this.updateLayout();
+        },
+
+        buildShowcase: function () {
+          const root = this.el;
+
+          // 3Dオブジェクト（今はBOXでテスト）
+          this.items.forEach((item, i) => {
+            const e = document.createElement('a-entity');
+
+            // 今はテスト用に box
+            const box = document.createElement('a-box');
+            box.setAttribute('depth', '0.3');
+            box.setAttribute('height', '0.3');
+            box.setAttribute('width',  '0.3');
+            box.setAttribute('color', i === this.activeIndex ? '#ff9933' : '#999999');
+            box.setAttribute('position', '0 0.35 0');
+
+            e.appendChild(box);
+            root.appendChild(e);
+            this.entities.push(e);
+          });
+
+          // タイトル・日付のテキスト
+          const title = document.createElement('a-text');
+          title.setAttribute('id', 'progressTitle');
+          title.setAttribute('value', '');
+          title.setAttribute('color', '#000000');
+          title.setAttribute('align', 'center');
+          title.setAttribute('width', '2.4');
+          title.setAttribute('position', '0 -0.15 0.15');
+          this.titleEl = title;
+          root.appendChild(title);
+
+          const date = document.createElement('a-text');
+          date.setAttribute('id', 'progressDate');
+          date.setAttribute('value', '');
+          date.setAttribute('color', '#333333');
+          date.setAttribute('align', 'center');
+          date.setAttribute('width', '2.4');
+          date.setAttribute('position', '0 -0.32 0.15');
+          this.dateEl = date;
+          root.appendChild(date);
+        },
+
+        updateLayout: function () {
+          const centerIndex = this.activeIndex;
+          const offsetX = 0.55;
+
+          this.entities.forEach((e, i) => {
+            const offset = i - centerIndex;
+            e.setAttribute('position', `${offset * offsetX} 0 0.15`);
+
+            const box = e.querySelector('a-box');
+            if (box) {
+              box.setAttribute('color', i === centerIndex ? '#ff9933' : '#cccccc');
+              box.setAttribute('scale', i === centerIndex ? '1.2 1.2 1.2' : '0.9 0.9 0.9');
+            }
+          });
+
+          const item = this.items[centerIndex];
+          if (this.titleEl && this.dateEl && item) {
+            this.titleEl.setAttribute('value', item.title);
+            this.dateEl.setAttribute('value', item.date);
+          }
+        },
+
+        next: function () {
+          if (this.items.length === 0) return;
+          this.activeIndex = Math.max(0, this.activeIndex - 1); // 右→左（過去へ）
+          this.updateLayout();
+        },
+
+        prev: function () {
+          if (this.items.length === 0) return;
+          this.activeIndex = Math.min(this.items.length - 1, this.activeIndex + 1); // 左→右（未来側＝最新へ）
+          this.updateLayout();
+        },
+
+        tick: function (time, dt) {
+          // 中央のオブジェクトだけゆっくり回転
+          const centerIndex = this.activeIndex;
+          const centerEntity = this.entities[centerIndex];
+          if (!centerEntity) return;
+
+          const box = centerEntity.querySelector('a-box');
+          if (!box) return;
+
+          const rot = box.getAttribute('rotation') || {x: 0, y: 0, z: 0};
+          rot.y += 30 * (dt / 1000); // 1秒で30度回転
+          box.setAttribute('rotation', rot);
+        }
+      });
+
+      /********************************************
+       * DOM準備：メニューとスワイプ
+       ********************************************/
+      document.addEventListener('DOMContentLoaded', function () {
+        // ハンバーガーメニュー
+        const btn = document.getElementById('menuButton');
+        const panel = document.getElementById('menuPanel');
+        const modeIndicator = document.getElementById('modeIndicator');
+
+        if (btn && panel) {
+          btn.addEventListener('click', () => {
+            const visible = panel.style.display === 'block';
+            panel.style.display = visible ? 'none' : 'block';
+          });
+
+          panel.addEventListener('click', (e) => {
+            const item = e.target.closest('.menu-item');
+            if (!item) return;
+            const mode = item.getAttribute('data-mode');
+            setMode(mode);
+            panel.style.display = 'none';
+          });
+        }
+
+        // 初期モード
+        updateModeVisibility();
+
+        // スワイプ検出（進捗モードのときだけ）
+        const touchLayer = document.getElementById('touchLayer');
+        let touchStartX = null;
+
+        if (touchLayer) {
+          touchLayer.addEventListener('touchstart', (e) => {
+            if (currentMode !== 'progress') return;
+            if (e.touches.length > 0) {
+              touchStartX = e.touches[0].clientX;
+            }
+          });
+
+          touchLayer.addEventListener('touchend', (e) => {
+            if (currentMode !== 'progress') return;
+            if (touchStartX === null) return;
+            if (e.changedTouches.length === 0) return;
+
+            const endX = e.changedTouches[0].clientX;
+            const dx = endX - touchStartX;
+
+            const threshold = 40;
+            if (Math.abs(dx) > threshold) {
+              const sceneEl = document.querySelector('[progress-showcase]');
+              if (!sceneEl) return;
+              const comp = sceneEl.components['progress-showcase'];
+              if (!comp) return;
+
+              if (dx < 0) {
+                comp.next();  // 左スワイプ → 過去へ
+              } else {
+                comp.prev();  // 右スワイプ → 最新側へ
+              }
+            }
+            touchStartX = null;
+          });
         }
       });
     </script>
   </head>
 
   <body>
-    <div class="overlay">XR Letter Loading... (Scroll Credits)</div>
+    <!-- UIオーバーレイ -->
+    <div class="overlay">
+      <div class="menu-bar">
+        <div class="hamburger" id="menuButton">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="menu-title">XR Letter Menu</div>
+      </div>
+      <div class="menu-panel" id="menuPanel">
+        <div class="menu-item active" data-mode="letter">手紙</div>
+        <div class="menu-item" data-mode="progress">進捗</div>
+      </div>
 
+      <div class="mode-indicator" id="modeIndicator">モード：手紙</div>
+    </div>
+
+    <!-- スワイプ検出レイヤー -->
+    <div id="touchLayer"></div>
+
+    <!-- ARシーン -->
     <a-scene
       embedded
       renderer="antialias: true; alpha: true"
       vr-mode-ui="enabled: false"
       arjs="sourceType: webcam; debugUIEnabled: false;"
     >
-      <!-- JS 側で行ごとに canvas を追加していく -->
+      <!-- 行ごとに canvas を JSから追加していく -->
       <a-assets></a-assets>
 
-      <!-- Hiro マーカー -->
+      <!-- 共通マーカー（今は hiro）。ここを画像マーカーに変えるのは後でやればOK -->
       <a-marker preset="hiro" scroll-manager>
-        <!-- 常に表示される白い縦長背景 -->
-        <a-plane
-          color="#ffffff"
-          width="2.4"
-          height="1.6"
-          position="0 0 0.1"
-          rotation="0 0 0"
-          opacity="0.97"
-        ></a-plane>
+        <!-- 手紙ウィンドウ -->
+        <a-entity id="letterRoot">
+          <!-- 手紙用 白背景 -->
+          <a-plane
+            color="#ffffff"
+            width="2.4"
+            height="1.6"
+            position="0 0 0.1"
+            rotation="0 0 0"
+            opacity="0.97"
+          ></a-plane>
+        </a-entity>
+
+        <!-- 進捗ウィンドウ（最初は非表示） -->
+        <a-entity id="progressRoot" progress-showcase visible="false">
+          <!-- ショーケース用の白背景 -->
+          <a-plane
+            color="#ffffff"
+            width="2.4"
+            height="1.6"
+            position="0 0 0.1"
+            rotation="0 0 0"
+            opacity="0.97"
+          ></a-plane>
+        </a-entity>
       </a-marker>
 
       <a-entity camera></a-entity>
