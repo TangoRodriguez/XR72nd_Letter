@@ -593,10 +593,16 @@
           });
 
           const item = this.items[centerIndex];
-          if (this.titleEl && this.dateEl && item) {
-            this.titleEl.setAttribute('value', item.title);
-            this.dateEl.setAttribute('value', item.date);
-          }
+
+            // タイトルはこれまで通り a-text
+            if (this.titleEl && item) {
+              this.titleEl.setAttribute('value', item.title);
+            }
+          
+            // ★ 3D 日付はこちら（text-geometry の value を更新）
+            if (this.dateEl3D && item) {
+              this.dateEl3D.setAttribute('text-geometry', 'value', item.date);
+            }
         },
 
         next: function () {
